@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en-us" class="m-auto dark"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+  <title>About Me</title>
+
+<meta name="theme-color" content="" />
+<meta charset="utf-8" />
+<meta content="width=device-width, initial-scale=1.0" name="viewport" />
+<meta name="description" content="About Me" />
+<meta name="author" content="Jesse Copas" />
+<meta name="generator" content="aafu theme by Darshan in Hugo 0.123.5" />
+
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">        <link rel="manifest" href="/site.webmanifest">        <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#252627">        <link rel="shortcut icon" href="/favicon.ico">
+  <link
+    rel="stylesheet"
+    href="https://use.fontawesome.com/releases/v5.15.2/css/all.css"
+    integrity="sha384-vSIIfh2YWi9wW0r9iZe7RJPrKwp6bG+s9QZMoITbCckVJqGCCRhc+ccxNcdpHuYu"
+    crossorigin="anonymous"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdn.rawgit.com/jpswalsh/academicons/master/css/academicons.min.css"
+  />
+  <link
+    rel="stylesheet"
+    href="//fonts.googleapis.com/css?family=Didact+Gothic%7CRoboto:400%7CRoboto+Mono"
+  />
+  <link rel="stylesheet" href="/css/aafu.css" />
+
+
+
+
+<link href="/main.css" rel="stylesheet" />
+
+
+  
+
+  <script>
+    let html = document.querySelector("html");
+    let theme = window.localStorage.getItem("theme");
+    if (theme) {
+      theme === "dark"
+        ? html.classList.add("dark")
+        : html.classList.remove("dark");
+    } else if (html.classList.contains("dark")) {
+      window.localStorage.setItem("theme", "dark");
+    } else {
+      html.classList.remove("dark");
+      window.localStorage.setItem("theme", "light");
+    }
+
+    window.onload = () => {
+      let themeToggle = document.querySelector(".theme-toggle");
+      if (window.localStorage.getItem("theme") === "dark") {
+        themeToggle.classList.remove("bi-moon-fill");
+        themeToggle.classList.add("bi-brightness-high");
+      } else {
+        themeToggle.classList.add("bi-moon-fill");
+        themeToggle.classList.remove("bi-brightness-high");
+      }
+
+      let defaultActivePanel = document.querySelector(".accordion.active");
+      if (defaultActivePanel) {
+        defaultActivePanel.nextElementSibling.style.maxHeight =
+          defaultActivePanel.nextElementSibling.scrollHeight + "px";
+      }
+    };
+
+    window.onresize = () => {
+      let defaultActivePanel = document.querySelector(".accordion.active");
+      if (defaultActivePanel) {
+        defaultActivePanel.nextElementSibling.style.maxHeight =
+          defaultActivePanel.nextElementSibling.scrollHeight + "px";
+      }
+    };
+  </script>
+</head>
+<body class="h-screen p-2 m-auto max-w-4xl flex flex-col">
+    
+    <main class="grow">
+<div class="grid grid-cols-1 md:grid-cols-5 gap-2 sm py-2">
+  <div class="col-span-2">
+    <div class="bg-gray-300 dark:bg-darker rounded drop-shadow-md p-2">
+      <div class="flex flex-col justify-center">
+        <div class=""><div class="w-100 h-100 flex justify-center p-4">
+  <img
+    class="rounded rounded-full"
+    src="/images/Headshot.jpg"
+    alt="Jesse Copas"
+    style="max-width: 250px"
+  />
+</div>
+</div>
+        <div class="p-2 text-center">
+          <h1 class="mb-0">Jesse Copas</h1>
+<h2 class="mb-0">Information Technology Specialist</h2>
+<h3 class="mb-4">Rochester,NY</h3>
+<div class="mb-4 flex flex-wrap justify-center">
+  
+  <div class="mx-2">
+    <a class="text-2xl" href="https://www.linkedin.com/in/jesse-copas-50339b174/">
+      <i class="mt-1 fab fa-linkedin-in"></i>
+    </a>
+  </div>
+  
+  <div class="mx-2">
+    <a class="text-2xl" href="https://github.com/Jessomadic">
+      <i class="mt-1 fab fa-github"></i>
+    </a>
+  </div>
+  
+</div>
+ <footer class="text-sm text-center border-t border-gray-300 dark:border-gray-700  pt-2 ">
+  <p class="markdownify">powered by <a href="https://gohugo.io/">hugo</a></p>
+  <p >
+    <i>
+      <a href="https://github.com/darshanbaral/aafu">
+        aafu
+      </a>
+    </i>
+    by
+    <a href="https://www.darshanbaral.com/">
+      darshan
+    </a>
+  </p>
+</footer>
+
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-span-3 relative">
+    
+    <div class="px-2">
+      <h2 class="my-0 accordion">
+        
+        <p
+          class="hover:bg-gray-300 rounded dark:hover:bg-darker m-0 p-2"
+          onclick="expandAccordion(this)"
+          style="cursor: pointer"
+        >
+          <i class="fas fa-user"></i>
+          About Me</p>
+      </h2>
+
+      <div
+        class="panel overflow-hidden px-2 ml-2"
+        
+      >
+        <div class=""><p class="markdownify">
+  My name is Jesse. I am a passionate IT professional who loves working on computing systems new and old. I take pride in my work, with a focus on creating solutions that make a difference. Whether it&rsquo;s streamlining processes or developing efficient scripts, I aim to contribute positively to every project. Beyond the tech world, I find joy in tabletop gaming. Engaging in games like D&amp;D, Terraforming Mars, and DiceForge allows me to unwind and connect with friends over shared interests.
+</p>
+</div>
+      </div>
+    </div>
+    
+    <div class="px-2">
+      <h2 class="my-0 accordion">
+        
+        <p
+          class="hover:bg-gray-300 rounded dark:hover:bg-darker m-0 p-2"
+          onclick="expandAccordion(this)"
+          style="cursor: pointer"
+        >
+          <i class="fas fa-briefcase"></i>
+          Job History</p>
+      </h2>
+
+      <div
+        class="panel overflow-hidden px-2 ml-2"
+        
+      >
+        <div class="">
+<h4 style="text-decoration: underline;">Hewlett-Packard Enterprise Field Technician</h4>
+<p class="mb-0">
+  May 2023 - Nov 2023 &middot; 
+  <a href="https://www.linkedin.com/company/hemmersbach">HEMMERSBACH US LLC</a>
+  
+</p>
+<p>• Responded to service tickets by driving to designated locations for device repair. • Specialized in repairing various devices, including HP laptops and desktops. • Proficient in troubleshooting and repairing A3/A4 printers. • Experienced in servicing servers, performing repairs, and installing new hardware. • Skilled in handling storage solutions as part of the repair and maintenance process. • Experienced in the abilty to adopt new servers on-to clients networks</p>
+
+
+<h4 style="text-decoration: underline;">Network Technician</h4>
+<p class="mb-0">
+  2022 - 2023 &middot; 
+  <a href="https://www.linkedin.com/company/simple-tech-innovations/">Simple Tech Innovations</a>
+  
+</p>
+<p>• An integral part of a collaborative three-member tech team at the MSP. • Committed to providing top-notch customer experiences. • Handled a wide spectrum of support, ranging from basic HelpDesk assistance to on-site support. • Proficient in repairing equipment and setting up new computers, printers, access points, network drops, etc. • Demonstrated versatility in addressing various technical challenges to meet customer needs. • Created a script from scratch that fully automated our entire new computer setup <a href="https://github.com/Jessomadic/NewComputerSetup/tree/Main">GitHub</a></p>
+
+
+<h4 style="text-decoration: underline;">Help Desk - IT Analyst</h4>
+<p class="mb-0">
+  March 2022 - Oct 2022 &middot; 
+  <a href="https://www.linkedin.com/company/university-of-rochester-medical-center/">University of Rochester Medical Center</a>
+  
+</p>
+<p>• Collaborated with every University of Rochester hospital and medical center. • Provided support for a vast array of applications, totaling over 400. • Supported a workforce of over 45,000 employees and 20,000 devices. • Our passionate team of 15 handled an average daily call volume ranging from 500 to 1000 calls. • Utilized Active Directory for granting permissions. • Leveraged Citrix Workspace as a launcher for a majority of applications. • Utilized ServiceNow as the primary ticketing system. • Supported a diverse range of tasks, from basic password resets and virus removal to navigating Epic with providers and nurses for comprehensive support. • Created an Active Directory tool for fast exporting of many user&rsquo;s information <a href="https://github.com/Jessomadic/AD-Export-Tool">GitHub</a></p>
+
+
+<h4 style="text-decoration: underline;">Game Repair and IT Support</h4>
+<p class="mb-0">
+  March 2021 - March 2022 &middot; 
+  <a href="https://www.linkedin.com/company/daveandbusters">Dave and Buster&#39;s, Inc</a>
+  
+</p>
+<p>As Game and IT support I maintained the systems and games both as needed and when requested. I also worked 1 on 1 with customers to resolve any issues that they may have. This involves:
+• Repairing the hardware of games. This could sometimes involve full rebuilds of the cabinets.
+• Replacing and updating the software for computers and games
+• Helping other employees with basic computer problems (printers, passwords, etc)</p>
+
+
+<h4 style="text-decoration: underline;">Electrical Associate</h4>
+<p class="mb-0">
+  Nov 2018 - April 2020 &middot; 
+  <a href="https://www.linkedin.com/company/the-home-depot/">The Home Depot</a>
+  
+</p>
+<p>• Solely managed the entire department, taking on responsibilities for 6-10 hours a day. • Possessed an expertise in self-managing tasks. • Established and maintained relationships with contractors, offering troubleshooting assistance when needed. • Excelled in repairing both short and long-term problems for customers. • Maintained the sales floor, ensuring a neat and organized environment for a fast and pleasant shopping experience. • Demonstrated expertise in smart home devices, particularly in selling popular brands like Google Home, Nest, Ring, and Wyze. • Interacted with customers, providing information and guidance on smart home products, contributing to successful sales.</p>
+
+
+</div>
+      </div>
+    </div>
+    
+    <div class="px-2">
+      <h2 class="my-0 accordion">
+        
+        <p
+          class="hover:bg-gray-300 rounded dark:hover:bg-darker m-0 p-2"
+          onclick="expandAccordion(this)"
+          style="cursor: pointer"
+        >
+          <i class="fas fa-graduation-cap"></i>
+          Education</p>
+      </h2>
+
+      <div
+        class="panel overflow-hidden px-2 ml-2"
+        
+      >
+        <div class="">
+
+<h4 style="text-decoration: underline;">Advanced Regents Diploma</h4>
+<p > &middot; Irondequoit High School</p>
+
+
+
+<h4 style="text-decoration: underline;">CompTia A&#43; Certification</h4>
+<p > &middot; CompTia</p>
+
+
+
+<h4 style="text-decoration: underline;">HP Enterprise Server Service Certification</h4>
+<p > &middot; Hewlett-Packard</p>
+
+
+
+<h4 style="text-decoration: underline;">HP A3/A4 Printer Repair Certifications</h4>
+<p > &middot; Hewlett-Packard</p>
+
+
+</div>
+      </div>
+    </div>
+    
+    <div class="px-2">
+      <h2 class="my-0 accordion">
+        
+        <p
+          class="hover:bg-gray-300 rounded dark:hover:bg-darker m-0 p-2"
+          onclick="expandAccordion(this)"
+          style="cursor: pointer"
+        >
+          <i class="fas fa-project-diagram"></i>
+          Projects</p>
+      </h2>
+
+      <div
+        class="panel overflow-hidden px-2 ml-2"
+        
+      >
+        <div class="">
+<h4>
+  <a href="https://github.com/Jessomadic/NewComputerSetup/tree/Main">Automatic Computer Setup Script</a>
+</h4>
+<p class="markdownify indent-8">I wrote this script in Batch to help save the hour and half+ time that it would take to setup new computers when I worked at Simple Tech Innovations With the main script coming in at almost 300 lines and fully customizable in it&rsquo;s functions it&rsquo;s a great tool for anyone that needs to setup many computers that may not have access to something like Pxe. You can find the project on my <a href="https://github.com/Jessomadic/NewComputerSetup/tree/Main">Github</a></p>
+
+<h4>
+  <a href="https://github.com/Jessomadic/Tdarr_Transcode_Plugin">Media Transcoding Plugin</a>
+</h4>
+<p class="markdownify indent-8">I wrote this JavaScript Plugin from scratch for the transcoding system known as Tdarr. This script allows high customizability for your desired media format including but not limited to • Encoder - (Supports H.264,HVEC,H.265,AV1,8-bit and 10bit for all as well as CPU and GPU encoding) • Bitrate - While most plugins and transcoding systems use a Quality profile that can give you a huge range of quality and bitrate this allows you to set the bitrate that you know will look good and have that constent. • Resolution Selection - This will let you Downscale the Resolution of your media to save tons of space while maintaining visual quality. • Media Container - This allows you to select between MP4 or MKV depending on the compatibility you desire. • Audio Type - This will transcode the audio track of the media file to the format of your choosing. You can find this project on my <a href="https://github.com/Jessomadic/Tdarr_Transcode_Plugin">Github</a></p>
+
+<h4>
+  <a href="https://github.com/Jessomadic/AD-Export-Tool">Active Directory User Export Tool</a>
+</h4>
+<p class="markdownify indent-8">I developed this tool to help our team at the University Of Rochester ISD Help Desk. From time to time we would be asked to obtain infomation on hundreds or thousands of users at a time. Prior to this this process was done by hand and could take the whole day(s) to complete. This allows it to be done in seconds.You can find this project on my <a href="https://github.com/Jessomadic/AD-Export-Tool">Github</a></p>
+
+<h4>
+  <a href="https://github.com/Jessomadic/Lyrics4Spotify">Lyrics4Spotify</a>
+</h4>
+<p class="markdownify indent-8">This was a project I worked on years before Spotify added Lyrics to their apps. This uses the Spotify API to check the song that you are listening to and to then grab lyrics from MusixMatch,the same service that Spotify now uses for their lyric fetching, and displays them on your desktop using Rainmeter. You can see a video demo <a href="https://www.youtube.com/watch?v=Ii5Lw0aB9uk">here</a> and find the project <a href="https://github.com/Jessomadic/Lyrics4Spotify">here</a></p>
+
+</div>
+      </div>
+    </div>
+    
+    <div class="px-2">
+      <h2 class="my-0 accordion">
+        
+        <p
+          class="hover:bg-gray-300 rounded dark:hover:bg-darker m-0 p-2"
+          onclick="expandAccordion(this)"
+          style="cursor: pointer"
+        >
+          <i class="fas fa-cogs"></i>
+          Skills</p>
+      </h2>
+
+      <div
+        class="panel overflow-hidden px-2 ml-2"
+        
+        id="skill-panel"
+        
+      >
+        <div class=""><script>
+  let skillPanel = document.querySelector("#skill-panel")
+    .previousElementSibling;
+  skillPanel.addEventListener("click", function() {
+    let skillBars = document.querySelectorAll("#skill-percent");
+    skillBars.forEach(elem => {
+      elem.style.width = elem.classList[0];
+    });
+  });
+</script>
+
+<code>Hardware troubleshooting and repair</code>
+<div class="w-100 mt-1 mb-3 border border-black dark:border-gray-300 rounded" style="height: 1.25rem;">
+  <div id="skill-percent" class="90% bg-blue-500 dark:bg-yellow-700 h-full rounded" style="width: 0; transition: all 0.5s;"></div>
+</div>
+
+<code>Software troubleshooting and customer support</code>
+<div class="w-100 mt-1 mb-3 border border-black dark:border-gray-300 rounded" style="height: 1.25rem;">
+  <div id="skill-percent" class="90% bg-blue-500 dark:bg-yellow-700 h-full rounded" style="width: 0; transition: all 0.5s;"></div>
+</div>
+
+<code>Batch/Python Scripting</code>
+<div class="w-100 mt-1 mb-3 border border-black dark:border-gray-300 rounded" style="height: 1.25rem;">
+  <div id="skill-percent" class="80% bg-blue-500 dark:bg-yellow-700 h-full rounded" style="width: 0; transition: all 0.5s;"></div>
+</div>
+
+<code>Networking</code>
+<div class="w-100 mt-1 mb-3 border border-black dark:border-gray-300 rounded" style="height: 1.25rem;">
+  <div id="skill-percent" class="75% bg-blue-500 dark:bg-yellow-700 h-full rounded" style="width: 0; transition: all 0.5s;"></div>
+</div>
+
+<code>Javascript</code>
+<div class="w-100 mt-1 mb-3 border border-black dark:border-gray-300 rounded" style="height: 1.25rem;">
+  <div id="skill-percent" class="60% bg-blue-500 dark:bg-yellow-700 h-full rounded" style="width: 0; transition: all 0.5s;"></div>
+</div>
+
+</div>
+      </div>
+    </div>
+    
+    <div class="px-2">
+      <h2 class="my-0 accordion">
+        
+        <p
+          class="hover:bg-gray-300 rounded dark:hover:bg-darker m-0 p-2"
+          onclick="expandAccordion(this)"
+          style="cursor: pointer"
+        >
+          <i class="fas fa-gamepad"></i>
+          Hobbies</p>
+      </h2>
+
+      <div
+        class="panel overflow-hidden px-2 ml-2"
+        
+      >
+        <div class=""><ul class="pl-0">
+  
+  <li class="list-unstyled mb-2">Tabletop Games</li>
+  
+  <li class="list-unstyled mb-2">Programming</li>
+  
+  <li class="list-unstyled mb-2">Hiking</li>
+  
+  <li class="list-unstyled mb-2">Movies</li>
+  
+</ul>
+</div>
+      </div>
+    </div>
+    
+
+    <script src="/js/accordion.js"></script>
+  </div>
+</div>
+
+    </main>
+    
+  </body>
+</html>
