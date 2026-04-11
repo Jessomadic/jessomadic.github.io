@@ -240,7 +240,10 @@ async function bestUri(server, token) {
 
   const fallback = (server.connections.find(c => c.relay) ?? server.connections[0]).uri;
   const apiUri   = firstWorkingUri ?? fallback;
-  const imageUri = firstWorkingRelay ?? apiUri;
+  // For images (loaded via <img> tags which handle failures gracefully),
+  // prefer ANY relay — even untested — so guests on other networks can reach it.
+  const anyRelay = server.connections.find(c => c.relay)?.uri;
+  const imageUri = firstWorkingRelay ?? anyRelay ?? apiUri;
   return { apiUri, imageUri };
 }
 
@@ -287,34 +290,6 @@ function formatMovie(m, uri, token) {
     genres:        (m.Genre ?? []).map(g => g.tag).slice(0, 3),
     poster:        m.thumb ? `${uri}${m.thumb}?X-Plex-Token=${token}&width=300&height=450` : null,
   };
-}
-
-// ── Poster caching ──────────────────────────────────────────
-//  Host fetches all poster images, converts to compact data-URLs via canvas,
-//  and stores them in Firebase.  Guests never need to reach the Plex server.
-async function cachePosters(movies) {
-  return Promise.all(movies.map(async (movie) => {
-    if (!movie.poster) return movie;
-    try {
-      const ctrl  = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 8000);
-      const resp  = await fetch(movie.poster, { signal: ctrl.signal });
-      clearTimeout(timer);
-      if (!resp.ok) return movie;
-      const blob   = await resp.blob();
-      const bmp    = await createImageBitmap(blob);
-      const canvas = document.createElement('canvas');
-      const maxW = 200, maxH = 300;
-      const scale = Math.min(maxW / bmp.width, maxH / bmp.height, 1);
-      canvas.width  = Math.round(bmp.width  * scale);
-      canvas.height = Math.round(bmp.height * scale);
-      canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
-      bmp.close();
-      return { ...movie, poster: canvas.toDataURL('image/jpeg', 0.65) };
-    } catch {
-      return movie; // CORS or network failure — keep original URL
-    }
-  }));
 }
 
 // ── Session helpers ───────────────────────────────────────────
@@ -734,9 +709,10 @@ function onWheelUpdate(wheelData) {
   if (!wheelData) return;
   _latestWheelData = wheelData;
 
-  const remaining    = wheelData.remaining    ?? [];
-  const eliminated   = wheelData.eliminated   ?? [];
-  const turnOrder    = wheelData.turnOrder    ?? [];
+  // Defensive: Firebase RTDB can convert arrays to objects in edge cases
+  const remaining  = Array.isArray(wheelData.remaining)  ? wheelData.remaining  : Object.values(wheelData.remaining  ?? {});
+  const eliminated = Array.isArray(wheelData.eliminated)  ? wheelData.eliminated  : Object.values(wheelData.eliminated  ?? {});
+  const turnOrder  = Array.isArray(wheelData.turnOrder)   ? wheelData.turnOrder   : Object.values(wheelData.turnOrder   ?? {});
   const spinIndex    = wheelData.spinIndex    ?? 0;
   const pendingSpin  = wheelData.pendingSpin;
   const winner       = wheelData.winner;
@@ -744,8 +720,8 @@ function onWheelUpdate(wheelData) {
   // Build movie lookup from remaining (full objects stored in Firebase)
   // Also include state.movies so eliminated titles can still be resolved
   const movieById = {};
-  state.movies.forEach(m => { movieById[m.id] = m; });
-  remaining.forEach(m => { movieById[m.id] = m; });
+  state.movies.forEach(m => { if (m && m.id) movieById[m.id] = m; });
+  remaining.forEach(m =>     { if (m && m.id) movieById[m.id] = m; });
 
   const currentTurn = turnOrder[spinIndex % turnOrder.length] ?? {};
   const isMyTurn    = currentTurn.userId === state.userId;
@@ -780,18 +756,20 @@ function onWheelUpdate(wheelData) {
     label.className   = 'wheel-turn-label wheel-other-turn';
   }
 
-  // Animate a pending spin — dedup so we never replay the same spin
+  // ── Animation / static display ──
+  // The flag tracks whether we just kicked off a NEW animation in this call.
+  let animationStarted = false;
+
   if (pendingSpin && !wheelAnimating) {
     const spinId = `${spinIndex}:${pendingSpin.eliminateId}`;
     if (spinId !== _lastAnimatedSpinId) {
       _lastAnimatedSpinId = spinId;
+      animationStarted = true;
       const { eliminateId, targetAngle } = pendingSpin;
       const localTarget = computeSpinTarget(targetAngle, wheelRotation, SPIN_EXTRA_LAPS);
 
-      // Show current wheel state (including the movie about to be eliminated)
       wheelMovies = remaining.slice();
       wheelAnimating = true;
-      document.getElementById('btn-spin').disabled = true;
       drawWheel(wheelMovies, wheelRotation);
 
       animateSpin(localTarget, SPIN_DURATION, () => {
@@ -813,24 +791,32 @@ function onWheelUpdate(wheelData) {
           });
         }
 
-        // Re-process the latest Firebase snapshot now that the animation is done.
-        // Fixes the race where the spinner's commit arrived mid-animation and
-        // onWheelUpdate skipped updating the button because wheelAnimating was true.
-        setTimeout(() => {
-          if (_latestWheelData && !wheelAnimating) onWheelUpdate(_latestWheelData);
-        }, 50);
+        // Re-process the latest Firebase state now that animation is done.
+        // The spinner's commit may have arrived mid-animation; if so,
+        // _latestWheelData already has the updated state (pendingSpin cleared,
+        // spinIndex bumped).  Re-calling onWheelUpdate applies it.
+        if (_latestWheelData) onWheelUpdate(_latestWheelData);
       });
-      return; // Don't change spin button until animation ends
     }
-    // Already animated this spin — fall through to static UI update
   }
 
-  // Static state — sync local display
-  if (!wheelAnimating) {
-    wheelMovies = remaining.slice();
-    drawWheel(wheelMovies, wheelRotation);
+  // ── Button + static draw ──
+  // Always update the button — even if we just started an animation.
+  if (animationStarted) {
+    document.getElementById('btn-spin').disabled = true;
+  } else if (!wheelAnimating) {
+    // Static: no animation in progress — sync the wheel display if the data
+    // has moved past the last pending spin (avoids flashing the eliminated
+    // movie back onto the wheel).
+    if (!pendingSpin) {
+      wheelMovies = remaining.slice();
+      drawWheel(wheelMovies, wheelRotation);
+    }
+    document.getElementById('btn-spin').disabled = !isMyTurn || !!pendingSpin;
+  } else {
+    // Animation from a previous onWheelUpdate is still running
+    document.getElementById('btn-spin').disabled = true;
   }
-  document.getElementById('btn-spin').disabled = !isMyTurn || wheelAnimating || !!pendingSpin;
 }
 
 // How far (clockwise) from currentRotation to reach finalAngle, plus extra laps
@@ -905,7 +891,7 @@ function animateSpin(targetRotation, duration, onComplete) {
     const t      = Math.min((now - startTime) / duration, 1);
     const eased  = 1 - Math.pow(1 - t, 4); // ease-out quartic
     wheelRotation = startRotation + totalDelta * eased;
-    drawWheel(wheelMovies, wheelRotation);
+    try { drawWheel(wheelMovies, wheelRotation); } catch { /* keep spinning */ }
     if (t < 1) { requestAnimationFrame(tick); }
     else        { wheelRotation = targetRotation; onComplete(); }
   }
@@ -1232,10 +1218,6 @@ function wireLibraryForm(servers, initialLibs) {
 
       const picked  = shuffle(raw).slice(0, Math.min(MOVIES_COUNT, raw.length));
       state.movies  = picked.map(m => formatMovie(m, state.plexImageUri, state.plexToken));
-
-      // Cache poster images as data-URLs so guests don't need Plex access
-      toast('Caching poster images…');
-      state.movies  = await cachePosters(state.movies);
 
       const code    = await createSession(state.movies);
       state.sessionCode = code;
