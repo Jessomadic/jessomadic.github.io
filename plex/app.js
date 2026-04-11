@@ -40,7 +40,6 @@ const state = {
   plexToken:   null,   // never persisted beyond sessionStorage
   plexServers: [],
   plexServerUri: null,
-  plexRelayUri:  null,  // relay URI used for poster images (accessible from any network)
   plexLibrary: null,
   movies:      [],
   swipes:      {},     // { movieId: true|false }
@@ -100,8 +99,10 @@ function setBtn(id, loading, text = '') {
 // ── Firebase (compat SDK) ─────────────────────────────────────
 // firebase-app-compat.js and firebase-database-compat.js expose the
 // global `firebase` object. Config is on window.firebaseConfig.
-let _listenRef = null;
-let _listenCb  = null;
+let _listenRef  = null;
+let _listenCb   = null;
+let _wheelRef   = null;   // separate listener slot for the wheel (avoids stomping the session listener)
+let _wheelCb    = null;
 
 function initFirebase() {
   const config = window.firebaseConfig;
@@ -129,6 +130,18 @@ function fbListen(path, cb) {
   // Return an unsubscribe function compatible with the existing callers
   return () => {
     if (_listenRef) { _listenRef.off('value', _listenCb); _listenRef = null; _listenCb = null; }
+  };
+}
+
+// Dedicated listener for the wheel — never shares state with fbListen so
+// setting up the wheel never accidentally removes the session listener.
+function wheelListen(path, cb) {
+  if (_wheelRef && _wheelCb) _wheelRef.off('value', _wheelCb);
+  _wheelCb = snap => cb(snap.val());
+  _wheelRef = db.ref(path);
+  _wheelRef.on('value', _wheelCb);
+  return () => {
+    if (_wheelRef) { _wheelRef.off('value', _wheelCb); _wheelRef = null; _wheelCb = null; }
   };
 }
 
@@ -215,15 +228,6 @@ async function bestUri(server, token) {
   return (server.connections.find(c => c.relay) ?? server.connections[0]).uri;
 }
 
-// Return the relay URI specifically — this works from any network (Plex cloud relay)
-// Used for poster image URLs stored in Firebase so non-host users can load them.
-function findRelayUri(server) {
-  const relay = server.connections.find(c => c.relay && c.uri?.startsWith('https'));
-  if (relay) return relay.uri;
-  // No dedicated relay — fall back to any HTTPS connection
-  return server.connections.find(c => c.uri?.startsWith('https'))?.uri ?? null;
-}
-
 async function plexGetLibraries(uri, token) {
   const r = await fetch(`${uri}/library/sections`, { headers: plexHeaders(token) });
   if (!r.ok) throw new Error('Could not load Plex libraries.');
@@ -252,11 +256,10 @@ async function plexGetMovies(uri, sectionKey, genreFastKey, token) {
   return d.MediaContainer.Metadata ?? [];
 }
 
-function formatMovie(m, uri, relayUri, token) {
-  // Use relay URI for poster images so non-host users (on different networks)
-  // can load them. The relay is accessible from any network; the local/best
-  // URI is only used for the host's interactive API calls.
-  const imgUri = relayUri ?? uri;
+function formatMovie(m, uri, token) {
+  // bestUri() already prefers the Plex relay (relay:true, sorted first and tested).
+  // Using uri directly means the relay is used when available, with automatic
+  // fallback to a working direct connection — no untested URI guessing needed.
   return {
     id:            String(m.ratingKey),
     title:         m.title ?? 'Unknown',
@@ -266,7 +269,7 @@ function formatMovie(m, uri, relayUri, token) {
     contentRating: m.contentRating ?? '',
     duration:      m.duration ? `${Math.round(m.duration / 60000)} min` : '',
     genres:        (m.Genre ?? []).map(g => g.tag).slice(0, 3),
-    poster:        m.thumb ? `${imgUri}${m.thumb}?X-Plex-Token=${token}&width=300&height=450` : null,
+    poster:        m.thumb ? `${uri}${m.thumb}?X-Plex-Token=${token}&width=300&height=450` : null,
   };
 }
 
@@ -359,8 +362,10 @@ function onSessionUpdate(session) {
     return;
   }
 
-  // Everyone done → results
-  if (session.status === 'done' && activeScreen !== 'screen-results') {
+  // Everyone done → results (skip if already showing results or the wheel)
+  if (session.status === 'done' &&
+      activeScreen !== 'screen-results' &&
+      activeScreen !== 'screen-wheel') {
     showResults(session);
     return;
   }
@@ -658,9 +663,10 @@ function showWheel(session, matchedMovies) {
   showScreen('screen-wheel');
   drawWheel(wheelMovies, wheelRotation);
 
-  // Subscribe to wheel updates (handles both fresh start and reload recovery)
+  // Subscribe to wheel updates via the dedicated wheel listener slot so it
+  // never tears down the session listener that fbListen manages.
   if (wheelUnsubscribe) wheelUnsubscribe();
-  wheelUnsubscribe = fbListen(`sessions/${state.sessionCode}/wheel`, onWheelUpdate);
+  wheelUnsubscribe = wheelListen(`sessions/${state.sessionCode}/wheel`, onWheelUpdate);
 
   // Only the host writes the initial wheel state to Firebase
   if (state.role === 'host') initWheelFirebase(matchedMovies, turnOrder);
@@ -1031,7 +1037,6 @@ function wireAllHandlers() {
 
       populateServerSelect(servers);
       state.plexServerUri = await bestUri(servers[0], token);
-      state.plexRelayUri  = findRelayUri(servers[0]);
 
       const libs = await plexGetLibraries(state.plexServerUri, token);
       if (!libs.length) throw new Error('No movie libraries found on this server.');
@@ -1131,7 +1136,6 @@ function wireLibraryForm(servers, initialLibs) {
     const server = servers[idx];
     try {
       state.plexServerUri = await bestUri(server, state.plexToken);
-      state.plexRelayUri  = findRelayUri(server);
       const libs = await plexGetLibraries(state.plexServerUri, state.plexToken);
       if (!libs.length) { toast('No movie libraries on this server.', 'error'); return; }
       state.plexLibrary = libs[0];
@@ -1166,7 +1170,7 @@ function wireLibraryForm(servers, initialLibs) {
       if (!raw.length) throw new Error('No movies found for that selection. Try a different genre.');
 
       const picked  = shuffle(raw).slice(0, Math.min(MOVIES_COUNT, raw.length));
-      state.movies  = picked.map(m => formatMovie(m, state.plexServerUri, state.plexRelayUri, state.plexToken));
+      state.movies  = picked.map(m => formatMovie(m, state.plexServerUri, state.plexToken));
 
       const code    = await createSession(state.movies);
       state.sessionCode = code;
