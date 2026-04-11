@@ -434,6 +434,7 @@ function onSessionUpdate(session) {
 function startSwiping() {
   state.currentIdx = 0;
   state.swipes = {};
+  state.movies = shuffle(state.movies);
   showScreen('screen-swipe');
   document.getElementById('swipe-session-code').textContent = state.sessionCode;
   renderStack();
