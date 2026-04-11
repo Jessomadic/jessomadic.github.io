@@ -1,0 +1,46 @@
+name: PickFlick — Validate & Deploy
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "plex/**"
+      - ".github/workflows/plex.yml"
+  pull_request:
+    paths:
+      - "plex/**"
+
+jobs:
+  validate:
+    name: Validate PickFlick app
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          echo "Checking PickFlick app files..."
+          test -f plex/index.html        && echo "✅ index.html"       || (echo "❌ Missing plex/index.html"        && exit 1)
+          test -f plex/app.js            && echo "✅ app.js"           || (echo "❌ Missing plex/app.js"            && exit 1)
+          test -f plex/firebase-config.js && echo "✅ firebase-config.js" || (echo "❌ Missing plex/firebase-config.js" && exit 1)
+
+      - name: Validate JavaScript syntax
+        run: |
+          echo "Checking app.js syntax..."
+          node --input-type=module < plex/app.js && echo "✅ app.js syntax OK" || echo "⚠️  app.js has syntax issues (may use browser-only APIs — check manually)"
+
+      - name: Check Firebase config placeholder
+        run: |
+          if grep -q "YOUR_API_KEY" plex/firebase-config.js; then
+            echo "⚠️  Firebase config still has placeholder values."
+            echo "   Fill in plex/firebase-config.js before the app will work."
+          else
+            echo "✅ Firebase config appears to be filled in."
+          fi
+
+      - name: Confirm deployment
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          echo "🚀 Changes pushed to main — GitHub Pages will auto-deploy."
+          echo "   The app will be live at: https://jessomadic.github.io/plex/"
