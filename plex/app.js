@@ -3,9 +3,9 @@
 //  Plex movie swiping app with Firebase real-time sync
 // ============================================================
 
-import { initializeApp }                               from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, get, update, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
-import { firebaseConfig }                              from './firebase-config.js';
+// Firebase compat SDK is loaded via <script> tags in index.html.
+// window.firebaseConfig is injected by firebase-config.js (also a plain script).
+// No ES module imports — avoids CDN/CORS/CSP fragility on static sites.
 
 // ── Constants ────────────────────────────────────────────────
 const PLEX_PRODUCT   = 'PickFlick';
@@ -83,12 +83,18 @@ function setBtn(id, loading, text = '') {
   el.innerHTML = loading ? '<span class="spinner-sm"></span>' : text;
 }
 
-// ── Firebase ─────────────────────────────────────────────────
+// ── Firebase (compat SDK) ─────────────────────────────────────
+// firebase-app-compat.js and firebase-database-compat.js expose the
+// global `firebase` object. Config is on window.firebaseConfig.
+let _listenRef = null;
+let _listenCb  = null;
+
 function initFirebase() {
-  if (firebaseConfig.apiKey === 'YOUR_API_KEY') return false;
+  const config = window.firebaseConfig;
+  if (!config || config.apiKey === 'YOUR_API_KEY') return false;
   try {
-    const app = initializeApp(firebaseConfig);
-    db = getDatabase(app);
+    firebase.initializeApp(config);
+    db = firebase.database();
     return true;
   } catch (e) {
     console.error('Firebase init error:', e);
@@ -96,14 +102,20 @@ function initFirebase() {
   }
 }
 
-async function fbSet(path, data)    { await set(ref(db, path), data); }
-async function fbGet(path)          { return (await get(ref(db, path))).val(); }
-async function fbUpdate(path, data) { await update(ref(db, path), data); }
+async function fbSet(path, data)    { await db.ref(path).set(data); }
+async function fbGet(path)          { return (await db.ref(path).once('value')).val(); }
+async function fbUpdate(path, data) { await db.ref(path).update(data); }
 
 function fbListen(path, cb) {
-  if (sessionUnsubscribe) sessionUnsubscribe();
-  sessionUnsubscribe = onValue(ref(db, path), snap => cb(snap.val()));
-  return sessionUnsubscribe;
+  // Tear down any previous listener
+  if (_listenRef && _listenCb) _listenRef.off('value', _listenCb);
+  _listenCb  = snap => cb(snap.val());
+  _listenRef = db.ref(path);
+  _listenRef.on('value', _listenCb);
+  // Return an unsubscribe function compatible with the existing callers
+  return () => {
+    if (_listenRef) { _listenRef.off('value', _listenCb); _listenRef = null; _listenCb = null; }
+  };
 }
 
 // ── Plex API ─────────────────────────────────────────────────
@@ -521,7 +533,7 @@ async function finishSwiping() {
   });
   updates[`sessions/${state.sessionCode}/participants/${state.userId}/done`] = true;
   try {
-    await update(ref(db), updates);
+    await db.ref('/').update(updates);
   } catch (e) {
     toast('Error saving swipes — check your connection.', 'error');
   }
