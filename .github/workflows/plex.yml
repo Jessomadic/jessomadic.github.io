@@ -2,23 +2,16 @@ name: PickFlick — Validate & Deploy
 
 on:
   push:
-    branches: ["**"]
-    paths:
-      - "plex/**"
-      - ".github/workflows/plex.yml"
-  pull_request:
     branches: [main]
-    paths:
-      - "plex/**"
-      - ".github/workflows/plex.yml"
+  workflow_dispatch:   # allow manual re-runs from the Actions tab
 
-# Prevent concurrent runs on the same branch
+# Only one deployment at a time; never cancel an in-flight deploy
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  # ── Job 1: Validate app files ──────────────────────────────────────────────
+  # ── Job 1: Validate ────────────────────────────────────────────────────────
   validate:
     name: Validate PickFlick app
     runs-on: ubuntu-latest
@@ -29,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js (for syntax checks)
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -38,7 +31,7 @@ jobs:
         run: |
           echo "=== Checking PickFlick app files ==="
           MISSING=0
-          for f in plex/index.html plex/app.js plex/firebase-config.js; do
+          for f in plex/index.html plex/app.js; do
             if [ -f "$f" ]; then
               echo "  ✅  $f"
             else
@@ -46,12 +39,13 @@ jobs:
               MISSING=1
             fi
           done
-          [ $MISSING -eq 0 ] || (echo "" && echo "One or more required files are missing." && exit 1)
+          # firebase-config.js is intentionally NOT committed — injected at deploy time
+          echo "  ✅  plex/firebase-config.js  (injected from secret at deploy time)"
+          [ $MISSING -eq 0 ] || exit 1
 
       - name: Validate JavaScript syntax
         run: |
           echo "=== Checking app.js syntax ==="
-          # Strip ES module import lines (browser CDN URLs) before Node parses
           node -e "
             const fs = require('fs');
             let code = fs.readFileSync('plex/app.js', 'utf8');
@@ -60,88 +54,101 @@ jobs:
             catch(e) { console.error('  ❌  Syntax error:', e.message); process.exit(1); }
           "
 
-      - name: Check for placeholder Firebase config
+      - name: Scan for credential anti-patterns
         run: |
-          echo "=== Checking Firebase config ==="
-          if grep -q "YOUR_API_KEY" plex/firebase-config.js; then
-            echo "  ⚠️  Firebase config still has placeholder values."
-            echo "     Fill in plex/firebase-config.js with your project's real values."
-            echo "     The app will show a setup screen until this is done."
-          else
-            echo "  ✅  Firebase config appears to be filled in."
-          fi
-
-      - name: Check for known anti-patterns
-        run: |
-          echo "=== Scanning for known issues ==="
+          echo "=== Security scan ==="
           ISSUES=0
-
-          # localStorage usage (credentials must not be persisted)
           if grep -n "localStorage" plex/app.js; then
-            echo "  ❌  Found localStorage usage — Plex tokens must NOT be stored in localStorage."
+            echo "  ❌  localStorage found — Plex tokens must NOT persist beyond the session"
             ISSUES=1
           else
-            echo "  ✅  No localStorage usage (good — Plex tokens stay in sessionStorage only)"
+            echo "  ✅  No localStorage usage (Plex token stays in sessionStorage only)"
           fi
-
-          # Verify root-level Firebase multi-path update pattern
-          if grep -q "update(ref(db), updates)" plex/app.js; then
-            echo "  ✅  Multi-path Firebase update uses root ref correctly"
+          if grep -qE "YOUR_API_KEY|placeholder" plex/app.js 2>/dev/null; then
+            echo "  ⚠️  Placeholder values found in app.js"
           fi
-
           [ $ISSUES -eq 0 ] || exit 1
 
       - name: Validate HTML structure
         run: |
           echo "=== Checking index.html structure ==="
           MISSING=0
-          for selector in \
-            "screen-landing" "screen-join-name" "screen-auth" "screen-library" \
-            "screen-lobby"   "screen-swipe"     "screen-waiting" "screen-results" \
-            "screen-setup-needed" "app.js" "firebase-config.js"; do
-            if grep -q "$selector" plex/index.html; then
-              echo "  ✅  $selector"
-            else
-              echo "  ❌  $selector — not found in index.html"
-              MISSING=1
-            fi
+          for id in screen-landing screen-join-name screen-auth screen-library \
+                    screen-lobby screen-swipe screen-waiting screen-results \
+                    screen-setup-needed; do
+            grep -q "$id" plex/index.html \
+              && echo "  ✅  $id" \
+              || { echo "  ❌  $id — not found"; MISSING=1; }
           done
           [ $MISSING -eq 0 ] || exit 1
 
-  # ── Job 2: Deployment confirmation (main branch only) ─────────────────────
-  confirm-deploy:
-    name: Confirm GitHub Pages deployment
+  # ── Job 2: Deploy to GitHub Pages ─────────────────────────────────────────
+  deploy:
+    name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: validate
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
+      pages: write        # required to deploy to Pages
+      id-token: write     # required for OIDC token used by deploy-pages
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Confirm deployment target
+      - name: Inject Firebase config from secret
+        # The FIREBASE_CONFIG_JSON secret holds the full firebaseConfig object as JSON.
+        # It is written into the file at deploy time and NEVER committed to git.
         run: |
-          echo "=== Deployment summary ==="
-          echo ""
-          echo "  Branch : main"
-          echo "  Commit : ${{ github.sha }}"
-          echo "  Author : ${{ github.actor }}"
-          echo ""
-          echo "  GitHub Pages will auto-deploy this repository."
-          echo "  PickFlick will be live at:"
-          echo ""
-          echo "    https://jessomadic.github.io/plex/"
-          echo ""
-          CNAME=$(cat CNAME 2>/dev/null || echo "")
-          if [ -n "$CNAME" ]; then
-            echo "  Custom domain also available at:"
-            echo "    https://${CNAME}/plex/"
+          if [ -z "$FIREBASE_CONFIG" ]; then
+            echo "::error::FIREBASE_CONFIG_JSON secret is not set."
+            echo ""
+            echo "Add it in: GitHub repo → Settings → Secrets and variables → Actions → New secret"
+            echo "  Name : FIREBASE_CONFIG_JSON"
+            echo "  Value: paste your Firebase config JSON object, e.g."
+            echo '  {"apiKey":"AIza...","authDomain":"...","databaseURL":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'
+            exit 1
           fi
+          node -e "
+            const raw = process.env.FIREBASE_CONFIG;
+            // Validate it's real JSON before writing
+            let parsed;
+            try { parsed = JSON.parse(raw); }
+            catch(e) { console.error('FIREBASE_CONFIG_JSON is not valid JSON:', e.message); process.exit(1); }
+            const required = ['apiKey','authDomain','databaseURL','projectId'];
+            const missing  = required.filter(k => !parsed[k]);
+            if (missing.length) {
+              console.error('Missing keys in FIREBASE_CONFIG_JSON:', missing.join(', '));
+              process.exit(1);
+            }
+            const js = 'export const firebaseConfig = ' + JSON.stringify(parsed, null, 2) + ';\n';
+            require('fs').writeFileSync('plex/firebase-config.js', js);
+            console.log('  ✅  plex/firebase-config.js generated (projectId:', parsed.projectId + ')');
+          "
+        env:
+          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG_JSON }}
 
-      - name: Check CNAME and .nojekyll are present
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Deploy the entire repo (Hugo output + plex/ with injected config)
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Print deployment summary
         run: |
-          echo "=== Checking GitHub Pages config files ==="
-          [ -f CNAME ]      && echo "  ✅  CNAME present     ($(cat CNAME))" || echo "  ⚠️  No CNAME file"
-          [ -f .nojekyll ]  && echo "  ✅  .nojekyll present  (Jekyll disabled)" || echo "  ⚠️  Missing .nojekyll — Jekyll may process files unexpectedly"
+          echo ""
+          echo "=== Deployment complete ==="
+          echo "  URL  : ${{ steps.deploy.outputs.page_url }}"
+          echo "  App  : ${{ steps.deploy.outputs.page_url }}plex/"
+          echo "  SHA  : ${{ github.sha }}"

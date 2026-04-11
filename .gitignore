@@ -1,0 +1,3 @@
+# Firebase config is injected at deploy time via GitHub Actions secrets.
+# Never commit real Firebase credentials to this repo.
+plex/firebase-config.js
