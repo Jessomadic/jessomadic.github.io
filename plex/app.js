@@ -14,9 +14,22 @@ const THRESHOLD      = 0.5;   // majority = > 50%
 const POLL_INTERVAL  = 2000;  // ms between Plex PIN polls
 const AUTH_TIMEOUT   = 5 * 60 * 1000; // 5 min
 
+// ── Wheel constants ───────────────────────────────────────────
+const WHEEL_COLORS = [
+  '#a855f7','#ec4899','#f97316','#eab308',
+  '#22c55e','#06b6d4','#8b5cf6','#f43f5e',
+  '#84cc16','#0ea5e9',
+];
+const SPIN_DURATION   = 4200; // ms — ease-out quartic, feels dramatic
+const SPIN_EXTRA_LAPS = 8;    // full extra rotations before landing
+
 // ── State ────────────────────────────────────────────────────
 let db = null;
 let sessionUnsubscribe = null;
+let wheelUnsubscribe   = null;
+let wheelMovies        = [];     // current remaining movie objects on the wheel
+let wheelRotation      = 0;      // current canvas rotation in radians
+let wheelAnimating     = false;
 
 const state = {
   role:        null,   // 'host' | 'guest'
@@ -579,6 +592,13 @@ function showResults(session) {
     .filter(({ pct }) => pct > THRESHOLD)
     .sort((a, b) => b.pct - a.pct);
 
+  // 2+ matches → spin the wheel to pick one
+  if (matches.length >= 2) {
+    showWheel(session, matches.map(m => m.movie));
+    return;
+  }
+
+  // 0 or 1 match → plain results screen
   const emoji    = document.getElementById('results-emoji');
   const headline = document.getElementById('results-headline');
   const sub      = document.getElementById('results-sub');
@@ -590,10 +610,11 @@ function showResults(session) {
     sub.textContent      = 'Tough crowd! Try a different genre or pick again.';
     list.innerHTML       = '<div class="empty-state"><span class="emoji">🎭</span><p>Nothing matched — someone has very specific taste!</p></div>';
   } else {
-    emoji.textContent    = matches.length === 1 ? '🎬' : '🎉';
-    headline.textContent = matches.length === 1 ? 'You matched one movie!' : `${matches.length} movies matched!`;
+    const { movie, yesVotes } = matches[0];
+    emoji.textContent    = '🎬';
+    headline.textContent = 'You matched a movie!';
     sub.textContent      = `${pCount} ${pCount === 1 ? 'person' : 'people'} · majority agreed`;
-    list.innerHTML       = matches.map(({ movie, pct, yesVotes }) => `
+    list.innerHTML       = `
       <div class="result-item">
         ${movie.poster
           ? `<img class="result-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy">`
@@ -604,10 +625,247 @@ function showResults(session) {
           ${movie.genres.length ? `<div class="genre-tags" style="margin-top:4px">${movie.genres.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>` : ''}
         </div>
         <div class="match-pct">${yesVotes}/${pCount}</div>
-      </div>`).join('');
+      </div>`;
+  }
+  showScreen('screen-results');
+}
+
+// ── Wheel ─────────────────────────────────────────────────────
+//  Players take turns spinning; the movie the pointer lands on is
+//  eliminated. Last movie standing is tonight's pick.
+//
+//  Firebase path: sessions/${code}/wheel = {
+//    remainingIds: [movieId, ...],   ordered list still on the wheel
+//    eliminated:   [movieId, ...],   in elimination order
+//    spinIndex:    Number,           incremented after each spin
+//    turnOrder:    [{userId,name}],  fixed cycle, derived from participants
+//    pendingSpin:  null | { eliminateId, targetAngle },
+//    winner:       null | movieId
+//  }
+
+function showWheel(session, matchedMovies) {
+  // Build turn order sorted by joinedAt so it's deterministic for everyone
+  const parts = session.participants ?? {};
+  const turnOrder = Object.entries(parts)
+    .sort(([, a], [, b]) => a.joinedAt - b.joinedAt)
+    .map(([userId, p]) => ({ userId, name: p.name }));
+
+  // Reset local wheel state
+  wheelMovies    = matchedMovies.slice();
+  wheelRotation  = 0;
+  wheelAnimating = false;
+
+  showScreen('screen-wheel');
+  drawWheel(wheelMovies, wheelRotation);
+
+  // Subscribe to wheel updates (handles both fresh start and reload recovery)
+  if (wheelUnsubscribe) wheelUnsubscribe();
+  wheelUnsubscribe = fbListen(`sessions/${state.sessionCode}/wheel`, onWheelUpdate);
+
+  // Only the host writes the initial wheel state to Firebase
+  if (state.role === 'host') initWheelFirebase(matchedMovies, turnOrder);
+}
+
+async function initWheelFirebase(movies, turnOrder) {
+  const existing = await fbGet(`sessions/${state.sessionCode}/wheel`);
+  if (existing) return; // reload recovery — don't overwrite in-progress wheel
+  await fbSet(`sessions/${state.sessionCode}/wheel`, {
+    remainingIds: movies.map(m => m.id),
+    eliminated:   [],
+    spinIndex:    0,
+    turnOrder,
+    pendingSpin:  null,
+    winner:       null,
+  });
+}
+
+function onWheelUpdate(wheelData) {
+  if (!wheelData) return;
+
+  // Build movie lookup from all 20 session movies (superset)
+  const movieById = {};
+  state.movies.forEach(m => { movieById[m.id] = m; });
+
+  const remainingIds = wheelData.remainingIds ?? [];
+  const eliminated   = wheelData.eliminated   ?? [];
+  const turnOrder    = wheelData.turnOrder     ?? [];
+  const spinIndex    = wheelData.spinIndex     ?? 0;
+  const pendingSpin  = wheelData.pendingSpin;
+  const winner       = wheelData.winner;
+
+  const currentTurn = turnOrder[spinIndex % turnOrder.length] ?? {};
+  const isMyTurn    = currentTurn.userId === state.userId;
+
+  // Remaining count badge
+  document.getElementById('wheel-remaining-label').textContent = `${remainingIds.length} left`;
+
+  // Eliminated chips (crossed-out titles below wheel)
+  document.getElementById('wheel-elim-row').innerHTML = eliminated.map(id => {
+    const m = movieById[id];
+    return m ? `<div class="wheel-elim-chip">${escHtml(m.title)}</div>` : '';
+  }).join('');
+
+  // Winner — show overlay
+  if (winner) {
+    const winnerMovie = movieById[winner];
+    if (winnerMovie) showWheelWinner(winnerMovie);
+    document.getElementById('btn-spin').disabled = true;
+    return;
   }
 
-  showScreen('screen-results');
+  // Turn label
+  const label = document.getElementById('wheel-turn-label');
+  if (pendingSpin) {
+    label.textContent = '🌀 Spinning…';
+    label.className   = 'wheel-turn-label';
+  } else if (isMyTurn) {
+    label.textContent = '🎯 Your turn — spin it!';
+    label.className   = 'wheel-turn-label wheel-my-turn';
+  } else {
+    label.textContent = `⏳ ${escHtml(currentTurn.name || 'Someone')}'s turn…`;
+    label.className   = 'wheel-turn-label wheel-other-turn';
+  }
+
+  // Animate a pending spin (if not already animating)
+  if (pendingSpin && !wheelAnimating) {
+    const { eliminateId, targetAngle } = pendingSpin;
+    const localTarget = computeSpinTarget(targetAngle, wheelRotation, SPIN_EXTRA_LAPS);
+
+    // Show current wheel state (including the movie about to be eliminated)
+    wheelMovies = remainingIds.map(id => movieById[id]).filter(Boolean);
+    wheelAnimating = true;
+    document.getElementById('btn-spin').disabled = true;
+    drawWheel(wheelMovies, wheelRotation);
+
+    animateSpin(localTarget, SPIN_DURATION, () => {
+      // Normalize rotation to final resting angle
+      wheelRotation  = targetAngle;
+      // Remove eliminated movie from local display
+      wheelMovies    = remainingIds.filter(id => id !== eliminateId).map(id => movieById[id]).filter(Boolean);
+      wheelAnimating = false;
+      drawWheel(wheelMovies, wheelRotation);
+
+      // The spinner (current turn user) commits the elimination to Firebase.
+      // Non-spinner clients wait for that Firebase update.
+      if (currentTurn.userId === state.userId) {
+        const newRemaining  = remainingIds.filter(id => id !== eliminateId);
+        const newEliminated = [...eliminated, eliminateId];
+        fbUpdate(`sessions/${state.sessionCode}/wheel`, {
+          remainingIds: newRemaining,
+          eliminated:   newEliminated,
+          spinIndex:    spinIndex + 1,
+          pendingSpin:  null,
+          winner:       newRemaining.length <= 1 ? (newRemaining[0] ?? null) : null,
+        });
+      }
+    });
+    return; // Don't change spin button until animation ends
+  }
+
+  // Static state — sync local display
+  if (!wheelAnimating) {
+    wheelMovies = remainingIds.map(id => movieById[id]).filter(Boolean);
+    drawWheel(wheelMovies, wheelRotation);
+  }
+  document.getElementById('btn-spin').disabled = !isMyTurn || wheelAnimating || !!pendingSpin;
+}
+
+// How far (clockwise) from currentRotation to reach finalAngle, plus extra laps
+function computeSpinTarget(finalAngle, currentRotation, extraLaps) {
+  const normalized    = ((currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  const clockwiseDist = ((finalAngle - normalized) + 2 * Math.PI) % (2 * Math.PI);
+  const dist          = clockwiseDist < 0.01 ? 2 * Math.PI : clockwiseDist;
+  return currentRotation + dist + extraLaps * 2 * Math.PI;
+}
+
+function drawWheel(movies, rotation) {
+  const canvas = document.getElementById('wheel-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const r  = Math.min(cx, cy) - 4;
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (!movies.length) {
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    ctx.fillStyle = '#1c1c2e'; ctx.fill();
+    return;
+  }
+
+  const n          = movies.length;
+  const sliceAngle = (2 * Math.PI) / n;
+  const fontSize   = n <= 4 ? 14 : n <= 8 ? 12 : 10;
+  const maxChars   = n <= 4 ? 18 : n <= 8 ? 13 : 9;
+
+  movies.forEach((movie, i) => {
+    const start = rotation + i * sliceAngle - Math.PI / 2;
+    const end   = start + sliceAngle;
+    const mid   = start + sliceAngle / 2;
+    const color = WHEEL_COLORS[i % WHEEL_COLORS.length];
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, start, end); ctx.closePath();
+    ctx.fillStyle   = color; ctx.fill();
+    ctx.strokeStyle = '#080810'; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(mid);
+    ctx.textAlign   = 'right';
+    ctx.fillStyle   = '#fff';
+    ctx.font        = `bold ${fontSize}px 'Space Grotesk', sans-serif`;
+    ctx.shadowColor = 'rgba(0,0,0,.75)'; ctx.shadowBlur = 4;
+    const title = movie.title.length > maxChars ? movie.title.slice(0, maxChars - 1) + '…' : movie.title;
+    ctx.fillText(title, r - 14, 5);
+    ctx.restore();
+  });
+
+  // Outer ring glow
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(168,85,247,.5)'; ctx.lineWidth = 3; ctx.stroke();
+
+  // Center hub
+  ctx.beginPath(); ctx.arc(cx, cy, 22, 0, 2 * Math.PI);
+  ctx.fillStyle = '#080810'; ctx.fill();
+  ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+  ctx.fillStyle = '#a855f7'; ctx.fill();
+}
+
+function animateSpin(targetRotation, duration, onComplete) {
+  const startRotation = wheelRotation;
+  const totalDelta    = targetRotation - startRotation;
+  const startTime     = performance.now();
+
+  function tick(now) {
+    const t      = Math.min((now - startTime) / duration, 1);
+    const eased  = 1 - Math.pow(1 - t, 4); // ease-out quartic
+    wheelRotation = startRotation + totalDelta * eased;
+    drawWheel(wheelMovies, wheelRotation);
+    if (t < 1) { requestAnimationFrame(tick); }
+    else        { wheelRotation = targetRotation; onComplete(); }
+  }
+  requestAnimationFrame(tick);
+}
+
+function showWheelWinner(movie) {
+  const overlay = document.getElementById('winner-overlay');
+  document.getElementById('winner-title').textContent = movie.title;
+  document.getElementById('winner-meta').textContent  =
+    [movie.year, movie.duration, movie.rating ? `⭐ ${movie.rating}` : null].filter(Boolean).join(' · ');
+
+  const posterImg = document.getElementById('winner-poster');
+  const posterPh  = document.getElementById('winner-poster-ph');
+  if (movie.poster) {
+    posterImg.src           = movie.poster;
+    posterImg.style.display = 'block';
+    posterPh.style.display  = 'none';
+  } else {
+    posterImg.style.display = 'none';
+    posterPh.style.display  = 'flex';
+  }
+  overlay.style.display = 'flex';
 }
 
 // ── Library setup ─────────────────────────────────────────────
@@ -841,6 +1099,26 @@ function wireAllHandlers() {
     }
   };
   document.getElementById('btn-leave-session').onclick = clearSession;
+
+  // ── Wheel ──
+  document.getElementById('btn-spin').onclick = async () => {
+    if (wheelAnimating || wheelMovies.length <= 1) return;
+    const n          = wheelMovies.length;
+    const elimIdx    = Math.floor(Math.random() * n);
+    const eliminateId = wheelMovies[elimIdx].id;
+    // Compute target angle so the pointer lands on segment elimIdx
+    const sliceAngle = (2 * Math.PI) / n;
+    const offset     = 0.2 + Math.random() * 0.6; // random spot within segment
+    let   finalAngle = -((elimIdx + offset) * sliceAngle);
+    finalAngle = ((finalAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    document.getElementById('btn-spin').disabled = true;
+    await fbUpdate(`sessions/${state.sessionCode}/wheel`, {
+      pendingSpin: { eliminateId, targetAngle: finalAngle },
+    });
+  };
+
+  document.getElementById('btn-winner-play-again').onclick = clearSession;
+  document.getElementById('btn-winner-leave').onclick      = clearSession;
 }
 
 function wireLibraryForm(servers, initialLibs) {
@@ -906,6 +1184,12 @@ function wireLibraryForm(servers, initialLibs) {
 
 function clearSession() {
   if (sessionUnsubscribe) sessionUnsubscribe();
+  if (wheelUnsubscribe) { wheelUnsubscribe(); wheelUnsubscribe = null; }
+  wheelMovies    = [];
+  wheelRotation  = 0;
+  wheelAnimating = false;
+  const overlay = document.getElementById('winner-overlay');
+  if (overlay) overlay.style.display = 'none';
   sessionStorage.removeItem('pf_session');
   sessionStorage.removeItem('pf_role');
   sessionStorage.removeItem('pf_token');

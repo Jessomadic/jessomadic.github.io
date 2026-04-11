@@ -329,6 +329,42 @@
     /* ── Empty state ─────────────────────────────── */
     .empty-state { text-align: center; padding: 32px 16px; color: var(--muted); }
     .empty-state .emoji { font-size: 48px; display: block; margin-bottom: 12px; }
+
+    /* ── Wheel Screen ────────────────────────────── */
+    #wheel-wrap {
+      position: relative; display: flex;
+      align-items: center; justify-content: center; margin: 6px auto;
+    }
+    #wheel-pointer {
+      position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 13px solid transparent; border-right: 13px solid transparent;
+      border-top: 26px solid var(--pink);
+      filter: drop-shadow(0 0 10px rgba(236,72,153,.9));
+      z-index: 10; pointer-events: none;
+    }
+    #wheel-canvas { display: block; border-radius: 50%; box-shadow: 0 0 40px rgba(168,85,247,.35), 0 0 80px rgba(168,85,247,.12); }
+    #wheel-turn-label { text-align: center; font-size: 17px; font-weight: 700; min-height: 28px; }
+    .wheel-my-turn    { color: var(--green); }
+    .wheel-other-turn { color: var(--subtle); }
+    .wheel-elim-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 380px; margin-top: 4px; }
+    .wheel-elim-chip {
+      background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.2);
+      border-radius: 8px; padding: 3px 9px; font-size: 12px; color: var(--muted); text-decoration: line-through;
+    }
+    .winner-overlay {
+      position: fixed; inset: 0; background: rgba(8,8,16,.93);
+      backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center;
+      z-index: 100; flex-direction: column; gap: 14px; padding: 32px 24px; text-align: center;
+    }
+    .winner-movie-title {
+      font-size: 26px; font-weight: 800; line-height: 1.3;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      max-width: 320px;
+    }
+    .winner-poster-img { width: 130px; height: 195px; object-fit: cover; border-radius: 14px; box-shadow: 0 0 48px rgba(168,85,247,.6); }
+    .winner-poster-ph  { width: 130px; height: 195px; border-radius: 14px; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 48px; box-shadow: 0 0 40px rgba(168,85,247,.4); }
   </style>
 </head>
 <body>
@@ -575,6 +611,39 @@
       <div class="auth-status mt-3">
         <div class="spinner-sm"></div>
         <span>Calculating matches…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN: Wheel — spin to eliminate matches
+  ══════════════════════════════════════════════ -->
+  <div id="screen-wheel" class="screen">
+    <div style="width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 16px">
+      <div class="row" style="width:100%;justify-content:space-between;margin-bottom:2px">
+        <span class="logo" style="font-size:20px">PickFlick</span>
+        <span id="wheel-remaining-label" class="text-muted" style="font-size:13px">— left</span>
+      </div>
+      <div id="wheel-turn-label" class="wheel-turn-label">—</div>
+      <div id="wheel-wrap">
+        <div id="wheel-pointer"></div>
+        <canvas id="wheel-canvas" width="320" height="320"></canvas>
+      </div>
+      <button id="btn-spin" class="btn btn-primary" disabled style="max-width:220px;margin-top:4px">🎡 Spin!</button>
+      <div id="wheel-elim-row" class="wheel-elim-row"></div>
+    </div>
+
+    <!-- Winner overlay — shown when 1 movie remains -->
+    <div id="winner-overlay" class="winner-overlay" style="display:none">
+      <div style="font-size:56px">🎬</div>
+      <div style="font-size:13px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.1em">Tonight's Movie</div>
+      <img  id="winner-poster"    class="winner-poster-img" src="" alt="" style="display:none">
+      <div  id="winner-poster-ph" class="winner-poster-ph"  style="display:none">🎬</div>
+      <div  id="winner-title"     class="winner-movie-title"></div>
+      <div  id="winner-meta"      class="text-muted"></div>
+      <div class="gap-3 mt-3" style="width:100%;max-width:280px">
+        <button id="btn-winner-play-again" class="btn btn-primary">🔄 Play Again</button>
+        <button id="btn-winner-leave"      class="btn btn-ghost">Leave</button>
       </div>
     </div>
   </div>

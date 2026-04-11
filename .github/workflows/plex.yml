@@ -63,8 +63,8 @@ jobs:
           echo "=== Checking index.html screens ==="
           MISSING=0
           for id in screen-landing screen-join-name screen-auth screen-library \
-                    screen-lobby screen-swipe screen-waiting screen-results \
-                    screen-setup-needed; do
+                    screen-lobby screen-swipe screen-waiting screen-wheel \
+                    screen-results screen-setup-needed; do
             grep -q "$id" plex/index.html \
               && echo "  ✅  $id" \
               || { echo "  ❌  $id — not found"; MISSING=1; }
