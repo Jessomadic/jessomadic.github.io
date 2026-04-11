@@ -417,14 +417,15 @@ function buildCard(movie) {
 function attachDrag(card, movieId) {
   let startX = 0, startY = 0, curX = 0, curY = 0, dragging = false;
 
-  const overlay  = card.querySelector('.card-color-overlay');
-  const stampL   = card.querySelector('.stamp-like');
-  const stampN   = card.querySelector('.stamp-nope');
+  const overlay = card.querySelector('.card-color-overlay');
+  const stampL  = card.querySelector('.stamp-like');
+  const stampN  = card.querySelector('.stamp-nope');
 
   function onStart(x, y) {
     dragging = true; startX = x; startY = y;
     card.style.transition = 'none';
   }
+
   function onMove(x, y) {
     if (!dragging) return;
     curX = x - startX; curY = y - startY;
@@ -438,8 +439,18 @@ function attachDrag(card, movieId) {
       ? `rgba(74,222,128,${likeAmt * 0.28})`
       : `rgba(248,113,113,${nopeAmt * 0.28})`;
   }
-  function onEnd() {
-    if (!dragging) return; dragging = false;
+
+  // Named references so we can remove them from window later
+  const handleMouseMove = e => onMove(e.clientX, e.clientY);
+  const handleMouseUp   = () => handleEnd();
+
+  function handleEnd() {
+    if (!dragging) return;
+    dragging = false;
+    // Always remove window listeners when the drag ends
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup',   handleMouseUp);
+
     if (Math.abs(curX) > 90) {
       flyOff(card, curX > 0, movieId);
     } else {
@@ -451,13 +462,17 @@ function attachDrag(card, movieId) {
     }
   }
 
-  card.addEventListener('mousedown',  e => { e.preventDefault(); onStart(e.clientX, e.clientY); });
-  window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
-  window.addEventListener('mouseup',   onEnd);
+  card.addEventListener('mousedown', e => {
+    e.preventDefault();
+    onStart(e.clientX, e.clientY);
+    // Re-attach window listeners each drag start (they are removed on end)
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup',   handleMouseUp);
+  });
 
   card.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-  card.addEventListener('touchmove',  e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-  card.addEventListener('touchend',   onEnd);
+  card.addEventListener('touchmove',  e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); },  { passive: false });
+  card.addEventListener('touchend',   () => handleEnd());
 }
 
 function flyOff(card, liked, movieId) {
@@ -499,14 +514,14 @@ function updateProgress() {
 
 async function finishSwiping() {
   showScreen('screen-waiting');
-  // Batch-write swipes + mark done
+  // Batch-write swipes + mark done via multi-path root update
   const updates = {};
   Object.entries(state.swipes).forEach(([mid, liked]) => {
     updates[`sessions/${state.sessionCode}/swipes/${state.userId}/${mid}`] = liked;
   });
   updates[`sessions/${state.sessionCode}/participants/${state.userId}/done`] = true;
   try {
-    await fbUpdate('', updates);
+    await update(ref(db), updates);
   } catch (e) {
     toast('Error saving swipes — check your connection.', 'error');
   }
@@ -612,17 +627,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Check for in-progress session on page reload
+  // Wire ALL handlers first — this must run regardless of whether
+  // we're doing a fresh start or recovering from a page reload.
+  wireAllHandlers();
+
+  // Recover an in-progress session after a page reload
   const savedCode = sessionStorage.getItem('pf_session');
   const savedRole = sessionStorage.getItem('pf_role');
   if (savedCode && savedRole) {
-    state.role = savedRole;
+    state.role        = savedRole;
     state.sessionCode = savedCode;
-    // Re-attach listener, session update will route us to the right screen
-    fbListen(`sessions/${savedCode}`, async session => {
-      if (!session) { clearSession(); showScreen('screen-landing'); return; }
+    fbListen(`sessions/${savedCode}`, session => {
+      if (!session) { clearSession(); return; }
       state.movies = session.movies ?? [];
-      updateLobbyParticipants(session.participants);
       if (session.status === 'lobby') {
         showLobby(savedCode, savedRole === 'host');
         return;
@@ -630,7 +647,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (session.status === 'swiping') {
         const myEntry = session.participants?.[state.userId];
         if (myEntry?.done) {
-          // Already swiped — go to waiting
           showScreen('screen-waiting');
           updateWaitingProgress(session.participants);
         } else {
@@ -644,7 +660,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   showScreen('screen-landing');
+});
 
+function wireAllHandlers() {
   // ── Landing ──
   document.getElementById('btn-start-session').onclick = () => {
     state.role = 'host';
@@ -714,10 +732,9 @@ document.addEventListener('DOMContentLoaded', () => {
       state.plexToken = token;
       sessionStorage.setItem('pf_token', token); // temp — session only
 
-      statusEl.className     = 'auth-status success';
-      statusEl.innerHTML     = '✅ Plex connected! Loading libraries…';
+      statusEl.className = 'auth-status success';
+      statusEl.innerHTML = '✅ Plex connected! Loading libraries…';
 
-      // Load server/library setup
       const servers = await plexGetServers(token);
       if (!servers.length) throw new Error('No Plex servers found on your account.');
       state.plexServers = servers;
@@ -740,8 +757,8 @@ document.addEventListener('DOMContentLoaded', () => {
       populateGenreSelect(genres);
       await refreshMovieCount(libs[0].key, '');
 
-      loading.style.display = 'none';
-      form.style.display    = 'flex';
+      loading.style.display    = 'none';
+      form.style.display       = 'flex';
       form.style.flexDirection = 'column';
 
       wireLibraryForm(servers, libs);
@@ -769,7 +786,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setBtn('btn-start-swiping', true);
     try {
       await fbUpdate(`sessions/${state.sessionCode}`, { status: 'swiping' });
-      // onSessionUpdate will fire and call startSwiping() for everyone
+      // onSessionUpdate fires for everyone and calls startSwiping()
     } catch (e) {
       toast('Could not start session. Try again.', 'error');
       setBtn('btn-start-swiping', false, '🎬 Start Swiping');
@@ -790,7 +807,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Results ──
   document.getElementById('btn-play-again').onclick = () => {
-    // Host goes back to library, guests go to lobby wait
     if (state.role === 'host') {
       showScreen('screen-library');
     } else {
@@ -798,7 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   document.getElementById('btn-leave-session').onclick = clearSession;
-});
+}
 
 function wireLibraryForm(servers, initialLibs) {
   const serverSel  = document.getElementById('select-server');
@@ -821,8 +837,9 @@ function wireLibraryForm(servers, initialLibs) {
   };
 
   librarySel.onchange = async () => {
-    const key = librarySel.value;
-    state.plexLibrary = { key };
+    const key   = librarySel.value;
+    const title = librarySel.options[librarySel.selectedIndex]?.text ?? '';
+    state.plexLibrary = { key, title };
     const genres = await plexGetGenres(state.plexServerUri, key, state.plexToken);
     populateGenreSelect(genres);
     await refreshMovieCount(key, genreSel.value);
