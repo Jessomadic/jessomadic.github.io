@@ -40,6 +40,7 @@ const state = {
   plexToken:   null,   // never persisted beyond sessionStorage
   plexServers: [],
   plexServerUri: null,
+  plexImageUri:  null,
   plexLibrary: null,
   movies:      [],
   swipes:      {},     // { movieId: true|false }
@@ -213,6 +214,9 @@ async function bestUri(server, token) {
     .filter(c => c.uri?.startsWith('https'))
     .sort((a, b) => (b.relay ? 1 : 0) - (a.relay ? 1 : 0));
 
+  let firstWorkingRelay = null;
+  let firstWorkingUri   = null;
+
   for (const c of conns) {
     try {
       const ctrl = new AbortController();
@@ -221,11 +225,21 @@ async function bestUri(server, token) {
         headers: plexHeaders(token), signal: ctrl.signal,
       });
       clearTimeout(t);
-      if (r.ok) return c.uri;
+      if (r.ok) {
+        if (!firstWorkingUri) firstWorkingUri = c.uri;
+        if (c.relay && !firstWorkingRelay) firstWorkingRelay = c.uri;
+        // If we already have the fastest URI and a relay, stop early
+        if (firstWorkingUri && firstWorkingRelay) break;
+        // If this was the fastest and it's not a relay, keep looking for a relay
+        if (firstWorkingUri && !firstWorkingRelay) continue;
+      }
     } catch { /* try next */ }
   }
-  // Nothing worked — return the relay or first anyway and let errors surface
-  return (server.connections.find(c => c.relay) ?? server.connections[0]).uri;
+
+  const fallback = (server.connections.find(c => c.relay) ?? server.connections[0]).uri;
+  const apiUri   = firstWorkingUri ?? fallback;
+  const imageUri = firstWorkingRelay ?? apiUri;
+  return { apiUri, imageUri };
 }
 
 async function plexGetLibraries(uri, token) {
@@ -640,7 +654,7 @@ function showResults(session) {
 //  eliminated. Last movie standing is tonight's pick.
 //
 //  Firebase path: sessions/${code}/wheel = {
-//    remainingIds: [movieId, ...],   ordered list still on the wheel
+//    remaining:    [{movie}, ...],   full movie objects still on the wheel
 //    eliminated:   [movieId, ...],   in elimination order
 //    spinIndex:    Number,           incremented after each spin
 //    turnOrder:    [{userId,name}],  fixed cycle, derived from participants
@@ -676,7 +690,7 @@ async function initWheelFirebase(movies, turnOrder) {
   const existing = await fbGet(`sessions/${state.sessionCode}/wheel`);
   if (existing) return; // reload recovery — don't overwrite in-progress wheel
   await fbSet(`sessions/${state.sessionCode}/wheel`, {
-    remainingIds: movies.map(m => m.id),
+    remaining:    movies,
     eliminated:   [],
     spinIndex:    0,
     turnOrder,
@@ -688,22 +702,24 @@ async function initWheelFirebase(movies, turnOrder) {
 function onWheelUpdate(wheelData) {
   if (!wheelData) return;
 
-  // Build movie lookup from all 20 session movies (superset)
-  const movieById = {};
-  state.movies.forEach(m => { movieById[m.id] = m; });
-
-  const remainingIds = wheelData.remainingIds ?? [];
+  const remaining    = wheelData.remaining    ?? [];
   const eliminated   = wheelData.eliminated   ?? [];
-  const turnOrder    = wheelData.turnOrder     ?? [];
-  const spinIndex    = wheelData.spinIndex     ?? 0;
+  const turnOrder    = wheelData.turnOrder    ?? [];
+  const spinIndex    = wheelData.spinIndex    ?? 0;
   const pendingSpin  = wheelData.pendingSpin;
   const winner       = wheelData.winner;
+
+  // Build movie lookup from remaining (full objects stored in Firebase)
+  // Also include state.movies so eliminated titles can still be resolved
+  const movieById = {};
+  state.movies.forEach(m => { movieById[m.id] = m; });
+  remaining.forEach(m => { movieById[m.id] = m; });
 
   const currentTurn = turnOrder[spinIndex % turnOrder.length] ?? {};
   const isMyTurn    = currentTurn.userId === state.userId;
 
   // Remaining count badge
-  document.getElementById('wheel-remaining-label').textContent = `${remainingIds.length} left`;
+  document.getElementById('wheel-remaining-label').textContent = `${remaining.length} left`;
 
   // Eliminated chips (crossed-out titles below wheel)
   document.getElementById('wheel-elim-row').innerHTML = eliminated.map(id => {
@@ -738,7 +754,7 @@ function onWheelUpdate(wheelData) {
     const localTarget = computeSpinTarget(targetAngle, wheelRotation, SPIN_EXTRA_LAPS);
 
     // Show current wheel state (including the movie about to be eliminated)
-    wheelMovies = remainingIds.map(id => movieById[id]).filter(Boolean);
+    wheelMovies = remaining.slice();
     wheelAnimating = true;
     document.getElementById('btn-spin').disabled = true;
     drawWheel(wheelMovies, wheelRotation);
@@ -747,21 +763,21 @@ function onWheelUpdate(wheelData) {
       // Normalize rotation to final resting angle
       wheelRotation  = targetAngle;
       // Remove eliminated movie from local display
-      wheelMovies    = remainingIds.filter(id => id !== eliminateId).map(id => movieById[id]).filter(Boolean);
+      wheelMovies    = remaining.filter(m => m.id !== eliminateId);
       wheelAnimating = false;
       drawWheel(wheelMovies, wheelRotation);
 
       // The spinner (current turn user) commits the elimination to Firebase.
       // Non-spinner clients wait for that Firebase update.
       if (currentTurn.userId === state.userId) {
-        const newRemaining  = remainingIds.filter(id => id !== eliminateId);
+        const newRemaining  = remaining.filter(m => m.id !== eliminateId);
         const newEliminated = [...eliminated, eliminateId];
         fbUpdate(`sessions/${state.sessionCode}/wheel`, {
-          remainingIds: newRemaining,
+          remaining:    newRemaining,
           eliminated:   newEliminated,
           spinIndex:    spinIndex + 1,
           pendingSpin:  null,
-          winner:       newRemaining.length <= 1 ? (newRemaining[0] ?? null) : null,
+          winner:       newRemaining.length <= 1 ? (newRemaining[0]?.id ?? null) : null,
         });
       }
     });
@@ -770,7 +786,7 @@ function onWheelUpdate(wheelData) {
 
   // Static state — sync local display
   if (!wheelAnimating) {
-    wheelMovies = remainingIds.map(id => movieById[id]).filter(Boolean);
+    wheelMovies = remaining.slice();
     drawWheel(wheelMovies, wheelRotation);
   }
   document.getElementById('btn-spin').disabled = !isMyTurn || wheelAnimating || !!pendingSpin;
@@ -1036,7 +1052,9 @@ function wireAllHandlers() {
       form.style.display    = 'none';
 
       populateServerSelect(servers);
-      state.plexServerUri = await bestUri(servers[0], token);
+      const { apiUri, imageUri } = await bestUri(servers[0], token);
+      state.plexServerUri  = apiUri;
+      state.plexImageUri   = imageUri;
 
       const libs = await plexGetLibraries(state.plexServerUri, token);
       if (!libs.length) throw new Error('No movie libraries found on this server.');
@@ -1135,7 +1153,9 @@ function wireLibraryForm(servers, initialLibs) {
     const idx = parseInt(serverSel.value, 10);
     const server = servers[idx];
     try {
-      state.plexServerUri = await bestUri(server, state.plexToken);
+      const { apiUri: newApiUri, imageUri: newImageUri } = await bestUri(server, state.plexToken);
+      state.plexServerUri  = newApiUri;
+      state.plexImageUri   = newImageUri;
       const libs = await plexGetLibraries(state.plexServerUri, state.plexToken);
       if (!libs.length) { toast('No movie libraries on this server.', 'error'); return; }
       state.plexLibrary = libs[0];
@@ -1170,7 +1190,7 @@ function wireLibraryForm(servers, initialLibs) {
       if (!raw.length) throw new Error('No movies found for that selection. Try a different genre.');
 
       const picked  = shuffle(raw).slice(0, Math.min(MOVIES_COUNT, raw.length));
-      state.movies  = picked.map(m => formatMovie(m, state.plexServerUri, state.plexToken));
+      state.movies  = picked.map(m => formatMovie(m, state.plexImageUri, state.plexToken));
 
       const code    = await createSession(state.movies);
       state.sessionCode = code;
