@@ -30,6 +30,8 @@ let wheelUnsubscribe   = null;
 let wheelMovies        = [];     // current remaining movie objects on the wheel
 let wheelRotation      = 0;      // current canvas rotation in radians
 let wheelAnimating     = false;
+let _latestWheelData   = null;   // most recent wheel snapshot from Firebase
+let _lastAnimatedSpinId = null;  // dedup: prevent re-animating the same spin
 
 const state = {
   role:        null,   // 'host' | 'guest'
@@ -285,6 +287,34 @@ function formatMovie(m, uri, token) {
     genres:        (m.Genre ?? []).map(g => g.tag).slice(0, 3),
     poster:        m.thumb ? `${uri}${m.thumb}?X-Plex-Token=${token}&width=300&height=450` : null,
   };
+}
+
+// ── Poster caching ──────────────────────────────────────────
+//  Host fetches all poster images, converts to compact data-URLs via canvas,
+//  and stores them in Firebase.  Guests never need to reach the Plex server.
+async function cachePosters(movies) {
+  return Promise.all(movies.map(async (movie) => {
+    if (!movie.poster) return movie;
+    try {
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const resp  = await fetch(movie.poster, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (!resp.ok) return movie;
+      const blob   = await resp.blob();
+      const bmp    = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      const maxW = 200, maxH = 300;
+      const scale = Math.min(maxW / bmp.width, maxH / bmp.height, 1);
+      canvas.width  = Math.round(bmp.width  * scale);
+      canvas.height = Math.round(bmp.height * scale);
+      canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+      bmp.close();
+      return { ...movie, poster: canvas.toDataURL('image/jpeg', 0.65) };
+    } catch {
+      return movie; // CORS or network failure — keep original URL
+    }
+  }));
 }
 
 // ── Session helpers ───────────────────────────────────────────
@@ -701,6 +731,7 @@ async function initWheelFirebase(movies, turnOrder) {
 
 function onWheelUpdate(wheelData) {
   if (!wheelData) return;
+  _latestWheelData = wheelData;
 
   const remaining    = wheelData.remaining    ?? [];
   const eliminated   = wheelData.eliminated   ?? [];
@@ -748,40 +779,49 @@ function onWheelUpdate(wheelData) {
     label.className   = 'wheel-turn-label wheel-other-turn';
   }
 
-  // Animate a pending spin (if not already animating)
+  // Animate a pending spin — dedup so we never replay the same spin
   if (pendingSpin && !wheelAnimating) {
-    const { eliminateId, targetAngle } = pendingSpin;
-    const localTarget = computeSpinTarget(targetAngle, wheelRotation, SPIN_EXTRA_LAPS);
+    const spinId = `${spinIndex}:${pendingSpin.eliminateId}`;
+    if (spinId !== _lastAnimatedSpinId) {
+      _lastAnimatedSpinId = spinId;
+      const { eliminateId, targetAngle } = pendingSpin;
+      const localTarget = computeSpinTarget(targetAngle, wheelRotation, SPIN_EXTRA_LAPS);
 
-    // Show current wheel state (including the movie about to be eliminated)
-    wheelMovies = remaining.slice();
-    wheelAnimating = true;
-    document.getElementById('btn-spin').disabled = true;
-    drawWheel(wheelMovies, wheelRotation);
-
-    animateSpin(localTarget, SPIN_DURATION, () => {
-      // Normalize rotation to final resting angle
-      wheelRotation  = targetAngle;
-      // Remove eliminated movie from local display
-      wheelMovies    = remaining.filter(m => m.id !== eliminateId);
-      wheelAnimating = false;
+      // Show current wheel state (including the movie about to be eliminated)
+      wheelMovies = remaining.slice();
+      wheelAnimating = true;
+      document.getElementById('btn-spin').disabled = true;
       drawWheel(wheelMovies, wheelRotation);
 
-      // The spinner (current turn user) commits the elimination to Firebase.
-      // Non-spinner clients wait for that Firebase update.
-      if (currentTurn.userId === state.userId) {
-        const newRemaining  = remaining.filter(m => m.id !== eliminateId);
-        const newEliminated = [...eliminated, eliminateId];
-        fbUpdate(`sessions/${state.sessionCode}/wheel`, {
-          remaining:    newRemaining,
-          eliminated:   newEliminated,
-          spinIndex:    spinIndex + 1,
-          pendingSpin:  null,
-          winner:       newRemaining.length <= 1 ? (newRemaining[0]?.id ?? null) : null,
-        });
-      }
-    });
-    return; // Don't change spin button until animation ends
+      animateSpin(localTarget, SPIN_DURATION, () => {
+        wheelRotation  = targetAngle;
+        wheelMovies    = remaining.filter(m => m.id !== eliminateId);
+        wheelAnimating = false;
+        drawWheel(wheelMovies, wheelRotation);
+
+        // The spinner commits the elimination to Firebase
+        if (currentTurn.userId === state.userId) {
+          const newRemaining  = remaining.filter(m => m.id !== eliminateId);
+          const newEliminated = [...eliminated, eliminateId];
+          fbUpdate(`sessions/${state.sessionCode}/wheel`, {
+            remaining:    newRemaining,
+            eliminated:   newEliminated,
+            spinIndex:    spinIndex + 1,
+            pendingSpin:  null,
+            winner:       newRemaining.length <= 1 ? (newRemaining[0]?.id ?? null) : null,
+          });
+        }
+
+        // Re-process the latest Firebase snapshot now that the animation is done.
+        // Fixes the race where the spinner's commit arrived mid-animation and
+        // onWheelUpdate skipped updating the button because wheelAnimating was true.
+        setTimeout(() => {
+          if (_latestWheelData && !wheelAnimating) onWheelUpdate(_latestWheelData);
+        }, 50);
+      });
+      return; // Don't change spin button until animation ends
+    }
+    // Already animated this spin — fall through to static UI update
   }
 
   // Static state — sync local display
@@ -1192,6 +1232,10 @@ function wireLibraryForm(servers, initialLibs) {
       const picked  = shuffle(raw).slice(0, Math.min(MOVIES_COUNT, raw.length));
       state.movies  = picked.map(m => formatMovie(m, state.plexImageUri, state.plexToken));
 
+      // Cache poster images as data-URLs so guests don't need Plex access
+      toast('Caching poster images…');
+      state.movies  = await cachePosters(state.movies);
+
       const code    = await createSession(state.movies);
       state.sessionCode = code;
 
@@ -1209,9 +1253,11 @@ function wireLibraryForm(servers, initialLibs) {
 function clearSession() {
   if (sessionUnsubscribe) sessionUnsubscribe();
   if (wheelUnsubscribe) { wheelUnsubscribe(); wheelUnsubscribe = null; }
-  wheelMovies    = [];
-  wheelRotation  = 0;
-  wheelAnimating = false;
+  wheelMovies         = [];
+  wheelRotation       = 0;
+  wheelAnimating      = false;
+  _latestWheelData    = null;
+  _lastAnimatedSpinId = null;
   const overlay = document.getElementById('winner-overlay');
   if (overlay) overlay.style.display = 'none';
   sessionStorage.removeItem('pf_session');
