@@ -436,6 +436,15 @@ function renderStack() {
     stack.appendChild(card);
   }
 
+  // Preload the next card's poster so it's in the browser cache by the time
+  // renderStack is called again (after a swipe).  This prevents a flash of
+  // empty/loading poster when the stack replenishes on slow connections.
+  const nextMovie = state.movies[state.currentIdx + toRender];
+  if (nextMovie?.poster) {
+    const preload = new Image();
+    preload.src = nextMovie.poster;
+  }
+
   // Disable buttons when no cards left
   const noneLeft = state.currentIdx >= state.movies.length;
   document.getElementById('btn-nope').disabled = noneLeft;
