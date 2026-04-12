@@ -448,7 +448,7 @@ function buildCard(movie) {
   card.dataset.id = movie.id;
 
   const posterHtml = movie.poster
-    ? `<img src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    ? `<img src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.closest('.card-poster').querySelector('.poster-placeholder').style.display='flex'">`
     : '';
   const metaParts = [movie.year, movie.duration, movie.rating ? `⭐ ${movie.rating}` : null].filter(Boolean);
   const badge = movie.contentRating ? `<span class="badge">${escHtml(movie.contentRating)}</span>` : '';
@@ -645,7 +645,7 @@ function showResults(session) {
     list.innerHTML       = `
       <div class="result-item">
         ${movie.poster
-          ? `<img class="result-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy">`
+          ? `<img class="result-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="result-poster-placeholder" style="display:none">🎬</div>`
           : `<div class="result-poster-placeholder">🎬</div>`}
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:16px;margin-bottom:2px">${escHtml(movie.title)}</div>
@@ -696,16 +696,20 @@ function showWheel(session, matchedMovies) {
 }
 
 async function initWheelFirebase(movies, turnOrder) {
-  const existing = await fbGet(`sessions/${state.sessionCode}/wheel`);
-  if (existing) return; // reload recovery — don't overwrite in-progress wheel
-  await fbSet(`sessions/${state.sessionCode}/wheel`, {
-    remaining:    movies,
-    eliminated:   [],
-    spinIndex:    0,
-    turnOrder,
-    pendingSpin:  null,
-    winner:       null,
-  });
+  try {
+    const existing = await fbGet(`sessions/${state.sessionCode}/wheel`);
+    if (existing) return; // reload recovery — don't overwrite in-progress wheel
+    await fbSet(`sessions/${state.sessionCode}/wheel`, {
+      remaining:    movies,
+      eliminated:   [],
+      spinIndex:    0,
+      turnOrder,
+      pendingSpin:  null,
+      winner:       null,
+    });
+  } catch (e) {
+    toast('Failed to initialize the wheel — check your connection and reload.', 'error');
+  }
 }
 
 function onWheelUpdate(wheelData) {
@@ -781,8 +785,13 @@ function onWheelUpdate(wheelData) {
         wheelAnimating = false;
         drawWheel(wheelMovies, wheelRotation);
 
-        // The spinner commits the elimination to Firebase
-        if (currentTurn.userId === state.userId) {
+        // The spinner commits the elimination to Firebase.
+        // Guard: skip if the Firebase state has already advanced past this spin
+        // (can happen when the commit round-trips back mid-animation and another
+        // player spins before our callback fires, which would overwrite their
+        // pendingSpin with null).
+        if (currentTurn.userId === state.userId &&
+            (_latestWheelData?.spinIndex ?? spinIndex) === spinIndex) {
           const newRemaining  = remaining.filter(m => m.id !== eliminateId);
           const newEliminated = [...eliminated, eliminateId];
           fbUpdate(`sessions/${state.sessionCode}/wheel`, {
@@ -791,6 +800,10 @@ function onWheelUpdate(wheelData) {
             spinIndex:    spinIndex + 1,
             pendingSpin:  null,
             winner:       newRemaining.length <= 1 ? (newRemaining[0]?.id ?? null) : null,
+          }).catch(() => {
+            // Network failure — allow the spin to be retried by clearing the dedup key
+            toast('Connection error saving spin — please try again.', 'error');
+            _lastAnimatedSpinId = null;
           });
         }
 
@@ -822,12 +835,16 @@ function onWheelUpdate(wheelData) {
   }
 }
 
-// How far (clockwise) from currentRotation to reach finalAngle, plus extra laps
+// How far (clockwise) from currentRotation to reach finalAngle, plus extra laps.
+// Always spins at least one full rotation beyond extraLaps so the wheel never
+// just twitches when finalAngle happens to be close to the current position.
 function computeSpinTarget(finalAngle, currentRotation, extraLaps) {
-  const normalized    = ((currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-  const clockwiseDist = ((finalAngle - normalized) + 2 * Math.PI) % (2 * Math.PI);
-  const dist          = clockwiseDist < 0.01 ? 2 * Math.PI : clockwiseDist;
-  return currentRotation + dist + extraLaps * 2 * Math.PI;
+  const TAU         = 2 * Math.PI;
+  const normalized  = ((currentRotation % TAU) + TAU) % TAU;
+  // Clockwise distance from current normalised angle to finalAngle (0 < dist ≤ TAU)
+  let dist = ((finalAngle - normalized) + TAU) % TAU;
+  if (dist < 0.001) dist = TAU; // land exactly on current position → full extra lap
+  return currentRotation + dist + extraLaps * TAU;
 }
 
 function drawWheel(movies, rotation) {
@@ -910,7 +927,11 @@ function showWheelWinner(movie) {
   const posterImg = document.getElementById('winner-poster');
   const posterPh  = document.getElementById('winner-poster-ph');
   if (movie.poster) {
-    posterImg.src           = movie.poster;
+    posterImg.onerror = () => {
+      posterImg.style.display = 'none';
+      posterPh.style.display  = 'flex';
+    };
+    posterImg.src           = movie.poster; // set src AFTER onerror to avoid missing the event
     posterImg.style.display = 'block';
     posterPh.style.display  = 'none';
   } else {
