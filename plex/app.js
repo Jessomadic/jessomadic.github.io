@@ -14,6 +14,13 @@ const THRESHOLD      = 0.5;   // majority = > 50%
 const POLL_INTERVAL  = 2000;  // ms between Plex PIN polls
 const AUTH_TIMEOUT   = 5 * 60 * 1000; // 5 min
 
+// TMDB image CDN — no auth required once you have the poster_path.
+// API key is injected by CI from the TMDB_API_KEY GitHub Actions secret.
+// w342 is wide enough for swipe cards (300 × 450 display size) without
+// over-fetching; fall back to w500 for the winner overlay if you ever
+// need higher resolution.
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w342';
+
 // ── Wheel constants ───────────────────────────────────────────
 const WHEEL_COLORS = [
   '#a855f7','#ec4899','#f97316','#eab308',
@@ -276,10 +283,51 @@ async function plexGetMovies(uri, sectionKey, genreFastKey, token) {
   return d.MediaContainer.Metadata ?? [];
 }
 
-function formatMovie(m, uri, token) {
-  // bestUri() already prefers the Plex relay (relay:true, sorted first and tested).
-  // Using uri directly means the relay is used when available, with automatic
-  // fallback to a working direct connection — no untested URI guessing needed.
+// Fetch a single TMDB poster URL for a raw Plex movie object.
+// Plex embeds external IDs in m.Guid, e.g. [{id:"tmdb://27205"},{id:"imdb://tt1375666"}].
+// Returns the image.tmdb.org CDN URL, or null on any failure.
+async function fetchTmdbPoster(m, apiKey) {
+  const tmdbGuid = (m.Guid ?? []).find(g => g.id?.startsWith('tmdb://'));
+  if (!tmdbGuid) return null;
+  const tmdbId = tmdbGuid.id.slice('tmdb://'.length);
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    const r = await fetch(
+      `https://api.themoviedb.org/3/movie/${encodeURIComponent(tmdbId)}?api_key=${apiKey}&language=en-US`,
+      { signal: ctrl.signal },
+    );
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.poster_path ? `${TMDB_IMAGE_BASE}${d.poster_path}` : null;
+  } catch { return null; }
+}
+
+// Batch-fetch TMDB poster URLs for an array of raw Plex movies in parallel.
+// Returns a Map of ratingKey → TMDB CDN URL.
+// Silently skips if window.tmdbApiKey is not configured.
+async function fetchTmdbPosters(rawMovies) {
+  const apiKey = window.tmdbApiKey;
+  if (!apiKey || apiKey === 'YOUR_TMDB_API_KEY') return {};
+  const pairs = await Promise.allSettled(
+    rawMovies.map(m =>
+      fetchTmdbPoster(m, apiKey).then(url => ({ key: String(m.ratingKey), url }))
+    )
+  );
+  const map = {};
+  for (const r of pairs) {
+    if (r.status === 'fulfilled' && r.value.url) map[r.value.key] = r.value.url;
+  }
+  return map;
+}
+
+function formatMovie(m, plexUri, token, tmdbUrl = null) {
+  // Prefer TMDB poster (globally accessible CDN, no auth) over Plex relay.
+  // Plex relay URL is kept as the fallback for movies with no TMDB match.
+  const plexPoster = m.thumb
+    ? `${plexUri}${m.thumb}?X-Plex-Token=${token}&width=300&height=450`
+    : null;
   return {
     id:            String(m.ratingKey),
     title:         m.title ?? 'Unknown',
@@ -289,7 +337,7 @@ function formatMovie(m, uri, token) {
     contentRating: m.contentRating ?? '',
     duration:      m.duration ? `${Math.round(m.duration / 60000)} min` : '',
     genres:        (m.Genre ?? []).map(g => g.tag).slice(0, 3),
-    poster:        m.thumb ? `${uri}${m.thumb}?X-Plex-Token=${token}&width=300&height=450` : null,
+    poster:        tmdbUrl ?? plexPoster,
   };
 }
 
@@ -1267,8 +1315,13 @@ function wireLibraryForm(servers, initialLibs) {
       const raw     = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
       if (!raw.length) throw new Error('No movies found for that selection. Try a different genre.');
 
-      const picked  = shuffle(raw).slice(0, Math.min(MOVIES_COUNT, raw.length));
-      state.movies  = picked.map(m => formatMovie(m, state.plexImageUri, state.plexToken));
+      const picked     = shuffle(raw).slice(0, Math.min(MOVIES_COUNT, raw.length));
+      // Fetch TMDB poster URLs in parallel for all picked movies.
+      // Falls back to Plex relay URL per-movie if TMDB is unconfigured or lookup fails.
+      const tmdbPosters = await fetchTmdbPosters(picked);
+      state.movies  = picked.map(m => formatMovie(
+        m, state.plexImageUri, state.plexToken, tmdbPosters[String(m.ratingKey)] ?? null
+      ));
 
       const code    = await createSession(state.movies);
       state.sessionCode = code;
