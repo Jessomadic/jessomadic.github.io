@@ -9,3 +9,5 @@ window.firebaseConfig = {
   "messagingSenderId": "568806685855",
   "appId": "1:568806685855:web:34027b60050bfdafe076aa"
 };
+// TMDB_API_KEY secret not set — posters will use Plex relay as fallback.
+// Add TMDB_API_KEY to repo secrets to enable public TMDB poster CDN.
