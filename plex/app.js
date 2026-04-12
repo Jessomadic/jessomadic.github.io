@@ -344,7 +344,7 @@ function showLobby(code, isHost) {
   document.getElementById('lobby-guest-wait').style.display   = isHost ? 'none' : '';
   showScreen('screen-lobby');
 
-  fbListen(`sessions/${code}`, onSessionUpdate);
+  sessionUnsubscribe = fbListen(`sessions/${code}`, onSessionUpdate);
 }
 
 function updateLobbyParticipants(participants) {
@@ -997,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // Hand off to normal listener — onSessionUpdate won't re-call startSwiping()
         // because it only does so when transitioning FROM screen-lobby.
-        fbListen(`sessions/${savedCode}`, onSessionUpdate);
+        sessionUnsubscribe = fbListen(`sessions/${savedCode}`, onSessionUpdate);
         return;
       }
       if (session.status === 'done') { showResults(session); return; }
