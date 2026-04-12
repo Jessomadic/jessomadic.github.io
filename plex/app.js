@@ -194,10 +194,10 @@ function pollPin(pinId) {
         const r = await fetch(`https://plex.tv/api/v2/pins/${pinId}`, { headers: plexHeaders() });
         if (!r.ok) return;
         const pin = await r.json();
-        if (pin.authToken) { clearInterval(iv); resolve(pin.authToken); }
+        if (pin.authToken) { clearInterval(iv); clearTimeout(to); resolve(pin.authToken); }
       } catch { /* network blip, keep polling */ }
     }, POLL_INTERVAL);
-    setTimeout(() => { clearInterval(iv); reject(new Error('Sign-in timed out. Please try again.')); }, AUTH_TIMEOUT);
+    const to = setTimeout(() => { clearInterval(iv); reject(new Error('Sign-in timed out. Please try again.')); }, AUTH_TIMEOUT);
   });
 }
 
@@ -232,8 +232,9 @@ async function bestUri(server, token) {
         if (c.relay && !firstWorkingRelay) firstWorkingRelay = c.uri;
         // If we already have the fastest URI and a relay, stop early
         if (firstWorkingUri && firstWorkingRelay) break;
-        // If this was the fastest and it's not a relay, keep looking for a relay
-        if (firstWorkingUri && !firstWorkingRelay) continue;
+        // Relays are sorted first; once we're in the direct section there are no more
+        // relays to discover, so stop as soon as we have a working direct URI.
+        if (firstWorkingUri && !c.relay) break;
       }
     } catch { /* try next */ }
   }
@@ -550,7 +551,9 @@ function flyOff(card, liked, movieId) {
 }
 
 function triggerSwipe(liked) {
-  const top = document.querySelector('.swipe-card');
+  // Cards are appended bottom-first; the TOP card is the LAST child in the DOM.
+  const cards = document.querySelectorAll('#swipe-stack .swipe-card');
+  const top = cards[cards.length - 1];
   if (!top) return;
   flyOff(top, liked, top.dataset.id);
 }
@@ -964,17 +967,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // we're doing a fresh start or recovering from a page reload.
   wireAllHandlers();
 
-  // Recover an in-progress session after a page reload
+  // Recover an in-progress session after a page reload.
+  // Use a one-shot read to route to the correct screen exactly once, then
+  // hand off to onSessionUpdate (which has proper activeScreen guards) for all
+  // subsequent changes.  The old approach used a persistent anonymous listener
+  // that called startSwiping() on every Firebase update, resetting swipe
+  // progress whenever a participant joined mid-session.
   const savedCode = sessionStorage.getItem('pf_session');
   const savedRole = sessionStorage.getItem('pf_role');
   if (savedCode && savedRole) {
     state.role        = savedRole;
     state.sessionCode = savedCode;
-    fbListen(`sessions/${savedCode}`, session => {
+    db.ref(`sessions/${savedCode}`).once('value', snap => {
+      const session = snap.val();
       if (!session) { clearSession(); return; }
       state.movies = session.movies ?? [];
       if (session.status === 'lobby') {
         showLobby(savedCode, savedRole === 'host');
+        // showLobby already calls fbListen(onSessionUpdate)
         return;
       }
       if (session.status === 'swiping') {
@@ -985,9 +995,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           startSwiping();
         }
+        // Hand off to normal listener — onSessionUpdate won't re-call startSwiping()
+        // because it only does so when transitioning FROM screen-lobby.
+        fbListen(`sessions/${savedCode}`, onSessionUpdate);
         return;
       }
       if (session.status === 'done') { showResults(session); return; }
+      clearSession();
     });
     return;
   }
@@ -1005,7 +1019,7 @@ function wireAllHandlers() {
 
   document.getElementById('btn-join-session').onclick = () => {
     const code = document.getElementById('join-code-input').value.trim().toUpperCase();
-    if (code.length < 4) { toast('Enter a valid session code', 'error'); return; }
+    if (code.length !== 6) { toast('Enter a valid session code', 'error'); return; }
     state.sessionCode = code;
     state.role = 'guest';
     showScreen('screen-join-name');
@@ -1153,6 +1167,13 @@ function wireAllHandlers() {
   // ── Wheel ──
   document.getElementById('btn-spin').onclick = async () => {
     if (wheelAnimating || wheelMovies.length <= 1) return;
+    // Double-check it's actually this player's turn from the latest Firebase state
+    if (_latestWheelData) {
+      const { turnOrder = [], spinIndex = 0 } = _latestWheelData;
+      const currentTurn = Array.isArray(turnOrder) ? turnOrder : Object.values(turnOrder);
+      const expected = currentTurn[spinIndex % currentTurn.length];
+      if (expected?.userId !== state.userId) return;
+    }
     const n          = wheelMovies.length;
     const elimIdx    = Math.floor(Math.random() * n);
     const eliminateId = wheelMovies[elimIdx].id;
@@ -1234,7 +1255,7 @@ function wireLibraryForm(servers, initialLibs) {
 }
 
 function clearSession() {
-  if (sessionUnsubscribe) sessionUnsubscribe();
+  if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
   if (wheelUnsubscribe) { wheelUnsubscribe(); wheelUnsubscribe = null; }
   wheelMovies         = [];
   wheelRotation       = 0;
