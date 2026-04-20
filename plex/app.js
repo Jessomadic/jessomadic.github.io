@@ -1015,11 +1015,22 @@ function populateGenreSelect(genres) {
     genres.map(g => `<option value="${escHtml(g.fastKey ?? '')}">${escHtml(g.title)}</option>`).join('');
 }
 
+function getMaxDurationMs() {
+  const mins = parseInt(document.getElementById('select-duration')?.value ?? '0', 10);
+  return mins > 0 ? mins * 60000 : 0;
+}
+
+function applyDurationFilter(movies, maxMs) {
+  if (!maxMs) return movies;
+  return movies.filter(m => m.duration > 0 && m.duration <= maxMs);
+}
+
 async function refreshMovieCount(sectionKey, genreFastKey) {
   const hint = document.getElementById('movie-count-hint');
   try {
-    const movies = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey || null, state.plexToken);
-    const n = movies.length;
+    const all     = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey || null, state.plexToken);
+    const movies  = applyDurationFilter(all, getMaxDurationMs());
+    const n    = movies.length;
     const pick = Math.min(n, MOVIES_COUNT);
     hint.textContent = n > 0
       ? `${n} movie${n !== 1 ? 's' : ''} available · picking ${pick} at random`
@@ -1271,9 +1282,10 @@ function wireAllHandlers() {
 }
 
 function wireLibraryForm(servers, initialLibs) {
-  const serverSel  = document.getElementById('select-server');
-  const librarySel = document.getElementById('select-library');
-  const genreSel   = document.getElementById('select-genre');
+  const serverSel   = document.getElementById('select-server');
+  const librarySel  = document.getElementById('select-library');
+  const genreSel    = document.getElementById('select-genre');
+  const durationSel = document.getElementById('select-duration');
 
   serverSel.onchange = async () => {
     const idx = parseInt(serverSel.value, 10);
@@ -1305,6 +1317,10 @@ function wireLibraryForm(servers, initialLibs) {
     await refreshMovieCount(state.plexLibrary.key, genreSel.value);
   };
 
+  durationSel.onchange = async () => {
+    await refreshMovieCount(state.plexLibrary.key, genreSel.value);
+  };
+
   // ── Create session ──
   document.getElementById('btn-create-session').onclick = async () => {
     const sectionKey     = document.getElementById('select-library').value;
@@ -1312,10 +1328,11 @@ function wireLibraryForm(servers, initialLibs) {
 
     setBtn('btn-create-session', true);
     try {
-      const raw     = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
-      if (!raw.length) throw new Error('No movies found for that selection. Try a different genre.');
+      const raw        = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
+      const filtered   = applyDurationFilter(raw, getMaxDurationMs());
+      if (!filtered.length) throw new Error('No movies found for that selection. Try adjusting the genre or duration filter.');
 
-      const picked     = shuffle(raw).slice(0, Math.min(MOVIES_COUNT, raw.length));
+      const picked     = shuffle(filtered).slice(0, Math.min(MOVIES_COUNT, filtered.length));
       // Fetch TMDB poster URLs in parallel for all picked movies.
       // Falls back to Plex relay URL per-movie if TMDB is unconfigured or lookup fails.
       const tmdbPosters = await fetchTmdbPosters(picked);
