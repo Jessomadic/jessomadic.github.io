@@ -9,7 +9,8 @@
 
 // ── Constants ────────────────────────────────────────────────
 const PLEX_PRODUCT   = 'PickFlick';
-const MOVIES_COUNT   = 20;
+const MOVIES_COUNT   = 30;
+const SEQUEL_MAX_RATIO = 0.20;  // at most 20 % of the picked pool can be sequels
 const THRESHOLD      = 0.5;   // majority = > 50%
 const POLL_INTERVAL  = 2000;  // ms between Plex PIN polls
 const AUTH_TIMEOUT   = 5 * 60 * 1000; // 5 min
@@ -1025,6 +1026,46 @@ function applyDurationFilter(movies, maxMs) {
   return movies.filter(m => m.duration > 0 && m.duration <= maxMs);
 }
 
+// Returns true when a movie's title strongly suggests it is a sequel /
+// later instalment.  Conservative patterns only — we'd rather miss a sequel
+// than falsely exclude a standalone film like "1917" or "300".
+function isSequel(m) {
+  const t = (m.title ?? '').trim();
+  return (
+    // Ends with Roman numeral II or higher: "Rocky II", "Superman IV"
+    /\s+(?:II|III|IV|VI|VII|VIII|IX|X[IVX]*)\s*$/i.test(t) ||
+    // Explicit sequel words anywhere: "Part 2", "Chapter 3", "Vol. 2"
+    /\b(?:Part|Chapter|Episode|Vol\.?)\s*(?:\d+|[IVX]{2,})\b/i.test(t) ||
+    // Ends with a bare 1-2 digit number: "Saw 2", "Alien 3", "Die Hard 2"
+    /\s+\d{1,2}\s*$/.test(t) ||
+    // 1-2 digit number immediately before a colon: "Terminator 2: Judgment Day"
+    /\s+\d{1,2}\s*:/.test(t)
+  );
+}
+
+// Pick `count` movies from the filtered pool, capping sequels at
+// SEQUEL_MAX_RATIO.  Slack propagates both ways so we always return as
+// many movies as the pool allows without an infinite-loop risk.
+function pickMovies(movies, count) {
+  const maxSeq   = Math.floor(count * SEQUEL_MAX_RATIO);
+  const shuffled = shuffle(movies);
+  const nonSeq   = shuffled.filter(m => !isSequel(m));
+  const seqList  = shuffled.filter(m =>  isSequel(m));
+
+  // Non-sequel budget: (count - maxSeq), but give unused sequel slots back to non-sequels
+  const nsSlice  = Math.min(nonSeq.length,  count - maxSeq);
+  const slackNs  = (count - maxSeq) - nsSlice;  // unfilled non-sequel slots
+  const seqSlice = Math.min(seqList.length, maxSeq + slackNs);
+  const slackSeq = (maxSeq + slackNs) - seqSlice; // unfilled sequel slots (sequels scarce)
+  const nsExtra  = Math.min(nonSeq.length - nsSlice, slackSeq); // fill with extra non-sequels
+
+  return [
+    ...nonSeq.slice(0, nsSlice),
+    ...seqList.slice(0, seqSlice),
+    ...nonSeq.slice(nsSlice, nsSlice + nsExtra),
+  ].slice(0, count);
+}
+
 async function refreshMovieCount(sectionKey, genreFastKey) {
   const hint = document.getElementById('movie-count-hint');
   try {
@@ -1332,7 +1373,7 @@ function wireLibraryForm(servers, initialLibs) {
       const filtered   = applyDurationFilter(raw, getMaxDurationMs());
       if (!filtered.length) throw new Error('No movies found for that selection. Try adjusting the genre or duration filter.');
 
-      const picked     = shuffle(filtered).slice(0, Math.min(MOVIES_COUNT, filtered.length));
+      const picked     = pickMovies(filtered, MOVIES_COUNT);
       // Fetch TMDB poster URLs in parallel for all picked movies.
       // Falls back to Plex relay URL per-movie if TMDB is unconfigured or lookup fails.
       const tmdbPosters = await fetchTmdbPosters(picked);
