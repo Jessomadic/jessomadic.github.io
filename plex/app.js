@@ -1043,21 +1043,35 @@ function isSequel(m) {
   );
 }
 
-// Pick `count` movies from the filtered pool, capping sequels at
-// SEQUEL_MAX_RATIO.  Slack propagates both ways so we always return as
-// many movies as the pool allows without an infinite-loop risk.
+// Pick `count` movies, capping franchise/sequel titles at SEQUEL_MAX_RATIO.
+// Uses Plex Collection tags to catch subtitle-only sequels ("Endgame", "No Way Home")
+// that have no number in the title. First movie from each franchise = non-sequel;
+// all subsequent movies from the same franchise = sequel.
+// Slack propagates both ways so we always fill the pool as much as possible.
 function pickMovies(movies, count) {
-  const maxSeq   = Math.floor(count * SEQUEL_MAX_RATIO);
-  const shuffled = shuffle(movies);
-  const nonSeq   = shuffled.filter(m => !isSequel(m));
-  const seqList  = shuffled.filter(m =>  isSequel(m));
+  const maxSeq          = Math.floor(count * SEQUEL_MAX_RATIO);
+  const shuffled        = shuffle(movies);
+  const seenCollections = new Set();
+  const nonSeq          = [];
+  const seqList         = [];
 
-  // Non-sequel budget: (count - maxSeq), but give unused sequel slots back to non-sequels
-  const nsSlice  = Math.min(nonSeq.length,  count - maxSeq);
-  const slackNs  = (count - maxSeq) - nsSlice;  // unfilled non-sequel slots
+  for (const m of shuffled) {
+    const collections   = (m.Collection ?? []).map(c => c.tag).filter(Boolean);
+    const collectionHit = collections.some(tag => seenCollections.has(tag));
+
+    if (isSequel(m) || collectionHit) {
+      seqList.push(m);
+    } else {
+      nonSeq.push(m);
+      collections.forEach(tag => seenCollections.add(tag));
+    }
+  }
+
+  const nsSlice  = Math.min(nonSeq.length, count - maxSeq);
+  const slackNs  = (count - maxSeq) - nsSlice;
   const seqSlice = Math.min(seqList.length, maxSeq + slackNs);
-  const slackSeq = (maxSeq + slackNs) - seqSlice; // unfilled sequel slots (sequels scarce)
-  const nsExtra  = Math.min(nonSeq.length - nsSlice, slackSeq); // fill with extra non-sequels
+  const slackSeq = (maxSeq + slackNs) - seqSlice;
+  const nsExtra  = Math.min(nonSeq.length - nsSlice, slackSeq);
 
   return [
     ...nonSeq.slice(0, nsSlice),
