@@ -1050,44 +1050,59 @@ function applyExcludeGenreFilter(movies) {
   return movies.filter(m => !(m.Genre ?? []).some(g => state.excludedGenres.has(g.tag)));
 }
 
-// Returns true when a movie's title strongly suggests it is a sequel /
-// later instalment.  Conservative patterns only — we'd rather miss a sequel
-// than falsely exclude a standalone film like "1917" or "300".
+// Reduce a movie title to its franchise root so sequels sharing a root
+// are detected even when they have no number (e.g. "Avengers: Endgame" → "avengers").
+// Rules: strip trailing sequel markers, take the part before ":", normalise.
+function movieBaseName(title) {
+  let t = (title ?? '').trim();
+  t = t.replace(/\s+(?:II|III|IV|VI|VII|VIII|IX|X[IVX]*)\s*$/i, '');
+  t = t.replace(/\s+\d{1,2}\s*$/, '');
+  const ci = t.indexOf(':');
+  if (ci >= 4) t = t.slice(0, ci); // "Avengers: Age of Ultron" → "Avengers"
+  return t.toLowerCase().replace(/^(?:the|a|an)\s+/, '').trim();
+}
+
+// Returns true when the title alone indicates a sequel (numbered or keyed).
 function isSequel(m) {
   const t = (m.title ?? '').trim();
   return (
-    // Ends with Roman numeral II or higher: "Rocky II", "Superman IV"
     /\s+(?:II|III|IV|VI|VII|VIII|IX|X[IVX]*)\s*$/i.test(t) ||
-    // Explicit sequel words anywhere: "Part 2", "Chapter 3", "Vol. 2"
     /\b(?:Part|Chapter|Episode|Vol\.?)\s*(?:\d+|[IVX]{2,})\b/i.test(t) ||
-    // Ends with a bare 1-2 digit number: "Saw 2", "Alien 3", "Die Hard 2"
     /\s+\d{1,2}\s*$/.test(t) ||
-    // 1-2 digit number immediately before a colon: "Terminator 2: Judgment Day"
     /\s+\d{1,2}\s*:/.test(t)
   );
 }
 
-// Pick `count` movies, capping franchise/sequel titles at SEQUEL_MAX_RATIO.
-// Uses Plex Collection tags to catch subtitle-only sequels ("Endgame", "No Way Home")
-// that have no number in the title. First movie from each franchise = non-sequel;
-// all subsequent movies from the same franchise = sequel.
-// Slack propagates both ways so we always fill the pool as much as possible.
+// Pick `count` movies capping franchise entries at SEQUEL_MAX_RATIO.
+// Three layers of franchise detection (most → least reliable):
+//   1. Plex Collection tags (when available on the server)
+//   2. Title-base grouping: strip sequel markers, take part before ":",
+//      normalise — "The Avengers" and "Avengers: Endgame" share base "avengers"
+//   3. Title regex: numbered sequels ("Saw 2", "Rocky IV")
+// The first movie encountered from any franchise is the "representative" (nonSeq).
+// All subsequent entries from the same franchise are capped by SEQUEL_MAX_RATIO.
+// Slack propagates both ways so we always fill the pool without short-changing.
 function pickMovies(movies, count) {
   const maxSeq          = Math.floor(count * SEQUEL_MAX_RATIO);
   const shuffled        = shuffle(movies);
   const seenCollections = new Set();
+  const seenBases       = new Set();
   const nonSeq          = [];
   const seqList         = [];
 
   for (const m of shuffled) {
-    const collections   = (m.Collection ?? []).map(c => c.tag).filter(Boolean);
-    const collectionHit = collections.some(tag => seenCollections.has(tag));
+    const collections = (m.Collection ?? []).map(c => c.tag).filter(Boolean);
+    const collHit     = collections.some(t => seenCollections.has(t));
+    const base        = movieBaseName(m.title ?? '');
+    const baseEligible = base.length >= 3 && !/^\d+$/.test(base); // skip "300", "1917"
+    const baseHit     = baseEligible && seenBases.has(base);
 
-    if (isSequel(m) || collectionHit) {
+    if (collHit || baseHit || isSequel(m)) {
       seqList.push(m);
     } else {
       nonSeq.push(m);
-      collections.forEach(tag => seenCollections.add(tag));
+      collections.forEach(t => seenCollections.add(t));
+      if (baseEligible) seenBases.add(base);
     }
   }
 
