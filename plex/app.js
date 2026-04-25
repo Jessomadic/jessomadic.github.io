@@ -92,6 +92,16 @@ function showScreen(id) {
   if (el) el.classList.add('active');
 }
 
+// Firebase removes empty arrays ([] → null) and may return sequential objects
+// instead of arrays ({0:"Action"} instead of ["Action"]).  Call this on every
+// movie array read back from Firebase before it reaches the UI.
+function normaliseMoviesFromFirebase(movies) {
+  return (movies ?? []).map(m => ({
+    ...m,
+    genres: Array.isArray(m.genres) ? m.genres : Object.values(m.genres ?? {}),
+  }));
+}
+
 let toastTimer;
 function toast(msg, type = 'info') {
   const el = document.getElementById('toast');
@@ -415,43 +425,30 @@ function onSessionUpdate(session) {
 
   const activeScreen = document.querySelector('.screen.active')?.id;
 
-  // Update lobby participants wherever we are
-  if (activeScreen === 'screen-lobby') {
-    updateLobbyParticipants(session.participants);
-  }
+  if (activeScreen === 'screen-lobby') updateLobbyParticipants(session.participants);
 
-  // Update waiting screen progress
-  if (activeScreen === 'screen-waiting') {
-    updateWaitingProgress(session.participants);
-  }
-
-  // Host transitions: lobby → swiping (when host clicks start)
-  if (session.status === 'swiping' && (activeScreen === 'screen-lobby')) {
-    state.movies = session.movies ?? [];
+  // Lobby → swiping transition (host clicked Start)
+  if (session.status === 'swiping' && activeScreen === 'screen-lobby') {
+    state.movies = normaliseMoviesFromFirebase(session.movies);
     startSwiping();
     return;
   }
 
-  // Everyone done → results (skip if already showing results or the wheel)
-  if (session.status === 'done' &&
-      activeScreen !== 'screen-results' &&
-      activeScreen !== 'screen-wheel') {
-    showResults(session);
-    return;
-  }
-
-  // Check if all done while we're on waiting screen
+  // All logic from the waiting screen — only transition to results from here
+  // so a stale listener on screen-library / screen-landing never fires showResults.
   if (activeScreen === 'screen-waiting') {
-    const parts = Object.values(session.participants ?? {});
-    const allDone = parts.length > 0 && parts.every(p => p.done);
-    if (allDone && session.status !== 'done') {
-      // Trigger results (host marks session done)
-      if (state.role === 'host') {
-        fbUpdate(`sessions/${state.sessionCode}`, { status: 'done' });
-      }
-    }
+    updateWaitingProgress(session.participants);
+
     if (session.status === 'done') {
       showResults(session);
+      return;
+    }
+
+    // Host sets status=done once every participant has finished swiping
+    const parts   = Object.values(session.participants ?? {});
+    const allDone = parts.length > 0 && parts.every(p => p.done);
+    if (allDone && state.role === 'host') {
+      fbUpdate(`sessions/${state.sessionCode}`, { status: 'done' });
     }
   }
 }
@@ -511,8 +508,9 @@ function buildCard(movie) {
     : '';
   const metaParts = [movie.year, movie.duration, movie.rating ? `⭐ ${movie.rating}` : null].filter(Boolean);
   const badge = movie.contentRating ? `<span class="badge">${escHtml(movie.contentRating)}</span>` : '';
-  const genres = movie.genres.length
-    ? `<div class="genre-tags">${movie.genres.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>`
+  const genreList = movie.genres ?? [];
+  const genres = genreList.length
+    ? `<div class="genre-tags">${genreList.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>`
     : '';
 
   card.innerHTML = `
@@ -660,7 +658,7 @@ function updateWaitingProgress(participants) {
 
 // ── Results ───────────────────────────────────────────────────
 function showResults(session) {
-  const movies       = session.movies ?? [];
+  const movies       = normaliseMoviesFromFirebase(session.movies);
   const allSwipes    = session.swipes ?? {};
   const participants = session.participants ?? {};
   const pCount       = Object.keys(participants).length;
@@ -704,7 +702,7 @@ function showResults(session) {
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:16px;margin-bottom:2px">${escHtml(movie.title)}</div>
           <div class="text-muted" style="font-size:13px">${[movie.year, movie.duration].filter(Boolean).join(' · ')}</div>
-          ${movie.genres.length ? `<div class="genre-tags" style="margin-top:4px">${movie.genres.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>` : ''}
+          ${(movie.genres ?? []).length ? `<div class="genre-tags" style="margin-top:4px">${movie.genres.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>` : ''}
         </div>
         <div class="match-pct">${yesVotes}/${pCount}</div>
       </div>`;
@@ -1199,7 +1197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     db.ref(`sessions/${savedCode}`).once('value', snap => {
       const session = snap.val();
       if (!session) { clearSession(); return; }
-      state.movies = session.movies ?? [];
+      state.movies = normaliseMoviesFromFirebase(session.movies);
       if (session.status === 'lobby') {
         showLobby(savedCode, savedRole === 'host');
         // showLobby already calls fbListen(onSessionUpdate)
@@ -1374,10 +1372,20 @@ function wireAllHandlers() {
 
   // ── Results ──
   document.getElementById('btn-play-again').onclick = () => {
-    if (state.role === 'host') {
-      showScreen('screen-library');
-    } else {
-      toast('Ask the host to start a new set.', 'info');
+    if (state.role !== 'host') { toast('Ask the host to start a new set.', 'info'); return; }
+    // Tear down old session listener so it never fires showResults over the library screen.
+    // Keep Plex auth/library state so the host can adjust filters and go again immediately.
+    if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
+    if (wheelUnsubscribe)   { wheelUnsubscribe();   wheelUnsubscribe   = null; }
+    wheelMovies = []; wheelRotation = 0; wheelAnimating = false;
+    _latestWheelData = null; _lastAnimatedSpinId = null;
+    const overlay = document.getElementById('winner-overlay');
+    if (overlay) overlay.style.display = 'none';
+    sessionStorage.removeItem('pf_session');
+    state.sessionCode = null; state.movies = []; state.swipes = {}; state.currentIdx = 0;
+    showScreen('screen-library');
+    if (state.plexLibrary?.key) {
+      refreshMovieCount(state.plexLibrary.key, document.getElementById('select-genre')?.value ?? '');
     }
   };
   document.getElementById('btn-leave-session').onclick = clearSession;
