@@ -506,7 +506,7 @@ function buildCard(movie) {
   card.dataset.id = movie.id;
 
   const posterHtml = movie.poster
-    ? `<img src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.closest('.card-poster').querySelector('.poster-placeholder').style.display='flex'">`
+    ? `<img src="${movie.poster}" alt="${escHtml(movie.title)}" onerror="this.style.display='none';this.closest('.card-poster').querySelector('.poster-placeholder').style.display='flex'">`
     : '';
   const metaParts = [movie.year, movie.duration, movie.rating ? `⭐ ${movie.rating}` : null].filter(Boolean);
   const badge = movie.contentRating ? `<span class="badge">${escHtml(movie.contentRating)}</span>` : '';
@@ -538,20 +538,32 @@ function buildCard(movie) {
 }
 
 function attachDrag(card, movieId) {
-  let startX = 0, startY = 0, curX = 0, curY = 0, dragging = false;
+  let startX = 0, startY = 0, curX = 0, curY = 0, pointerId = null;
 
   const overlay = card.querySelector('.card-color-overlay');
   const stampL  = card.querySelector('.stamp-like');
   const stampN  = card.querySelector('.stamp-nope');
 
-  function onStart(x, y) {
-    dragging = true; startX = x; startY = y;
-    card.style.transition = 'none';
+  function snapBack() {
+    card.style.transition = 'transform .35s ease';
+    card.style.transform  = 'scale(1) translateY(0)';
+    stampL.style.opacity  = 0;
+    stampN.style.opacity  = 0;
+    overlay.style.background = 'transparent';
   }
 
-  function onMove(x, y) {
-    if (!dragging) return;
-    curX = x - startX; curY = y - startY;
+  card.addEventListener('pointerdown', e => {
+    if (pointerId !== null || e.button > 0) return;
+    e.preventDefault();
+    pointerId = e.pointerId;
+    startX = e.clientX; startY = e.clientY; curX = 0; curY = 0;
+    card.setPointerCapture(e.pointerId);
+    card.style.transition = 'none';
+  });
+
+  card.addEventListener('pointermove', e => {
+    if (e.pointerId !== pointerId) return;
+    curX = e.clientX - startX; curY = e.clientY - startY;
     const rot = curX * 0.07;
     card.style.transform = `translateX(${curX}px) translateY(${curY}px) rotate(${rot}deg)`;
     const likeAmt = Math.min(Math.max(curX  / 100, 0), 1);
@@ -561,44 +573,27 @@ function attachDrag(card, movieId) {
     overlay.style.background = curX > 0
       ? `rgba(74,222,128,${likeAmt * 0.28})`
       : `rgba(248,113,113,${nopeAmt * 0.28})`;
-  }
-
-  // Named references so we can remove them from window later
-  const handleMouseMove = e => onMove(e.clientX, e.clientY);
-  const handleMouseUp   = () => handleEnd();
-
-  function handleEnd() {
-    if (!dragging) return;
-    dragging = false;
-    // Always remove window listeners when the drag ends
-    window.removeEventListener('mousemove', handleMouseMove);
-    window.removeEventListener('mouseup',   handleMouseUp);
-
-    if (Math.abs(curX) > 90) {
-      flyOff(card, curX > 0, movieId);
-    } else {
-      card.style.transition = 'transform .35s ease';
-      card.style.transform  = 'scale(1) translateY(0)';
-      stampL.style.opacity  = 0;
-      stampN.style.opacity  = 0;
-      overlay.style.background = 'transparent';
-    }
-  }
-
-  card.addEventListener('mousedown', e => {
-    e.preventDefault();
-    onStart(e.clientX, e.clientY);
-    // Re-attach window listeners each drag start (they are removed on end)
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup',   handleMouseUp);
   });
 
-  card.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-  card.addEventListener('touchmove',  e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); },  { passive: false });
-  card.addEventListener('touchend',   () => handleEnd());
+  card.addEventListener('pointerup', e => {
+    if (e.pointerId !== pointerId) return;
+    pointerId = null;
+    if (Math.abs(curX) > 90) flyOff(card, curX > 0, movieId);
+    else snapBack();
+  });
+
+  // iOS/system can cancel a touch mid-drag (edge swipe, incoming call, etc.)
+  // Without this, the card gets stuck mid-transform and subsequent drags break.
+  card.addEventListener('pointercancel', e => {
+    if (e.pointerId !== pointerId) return;
+    pointerId = null;
+    snapBack();
+  });
 }
 
 function flyOff(card, liked, movieId) {
+  if (card.dataset.flying) return; // guard: rapid taps must not double-record
+  card.dataset.flying = '1';
   card.style.transition = 'transform .4s ease, opacity .4s ease';
   card.style.transform  = liked ? 'translateX(150vw) rotate(30deg)' : 'translateX(-150vw) rotate(-30deg)';
   card.style.opacity    = '0';
