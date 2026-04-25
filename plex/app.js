@@ -52,9 +52,10 @@ const state = {
   plexServerUri: null,
   plexImageUri:  null,
   plexLibrary: null,
-  movies:      [],
-  swipes:      {},     // { movieId: true|false }
-  currentIdx:  0,
+  movies:        [],
+  swipes:        {},     // { movieId: true|false }
+  currentIdx:    0,
+  excludedGenres: new Set(),
 };
 
 // ── ID helpers ───────────────────────────────────────────────
@@ -1009,6 +1010,29 @@ function populateGenreSelect(genres) {
   const sel = document.getElementById('select-genre');
   sel.innerHTML = `<option value="">🎬 All genres</option>` +
     genres.map(g => `<option value="${escHtml(g.fastKey ?? '')}">${escHtml(g.title)}</option>`).join('');
+
+  state.excludedGenres.clear();
+  const chipsEl = document.getElementById('exclude-genre-chips');
+  const group   = document.getElementById('exclude-genre-group');
+  if (!chipsEl) return;
+  chipsEl.innerHTML = genres.map(g =>
+    `<button type="button" class="genre-chip" data-genre="${escHtml(g.title)}">${escHtml(g.title)}</button>`
+  ).join('');
+  group.style.display = genres.length ? '' : 'none';
+  chipsEl.querySelectorAll('.genre-chip').forEach(chip => {
+    chip.addEventListener('click', async () => {
+      const title = chip.dataset.genre;
+      if (state.excludedGenres.has(title)) {
+        state.excludedGenres.delete(title);
+        chip.classList.remove('excluded');
+      } else {
+        state.excludedGenres.add(title);
+        chip.classList.add('excluded');
+      }
+      const genreSel = document.getElementById('select-genre');
+      await refreshMovieCount(state.plexLibrary.key, genreSel.value);
+    });
+  });
 }
 
 function getMaxDurationMs() {
@@ -1019,6 +1043,11 @@ function getMaxDurationMs() {
 function applyDurationFilter(movies, maxMs) {
   if (!maxMs) return movies;
   return movies.filter(m => m.duration > 0 && m.duration <= maxMs);
+}
+
+function applyExcludeGenreFilter(movies) {
+  if (!state.excludedGenres.size) return movies;
+  return movies.filter(m => !(m.Genre ?? []).some(g => state.excludedGenres.has(g.tag)));
 }
 
 // Returns true when a movie's title strongly suggests it is a sequel /
@@ -1078,8 +1107,9 @@ function pickMovies(movies, count) {
 async function refreshMovieCount(sectionKey, genreFastKey) {
   const hint = document.getElementById('movie-count-hint');
   try {
-    const all     = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey || null, state.plexToken);
-    const movies  = applyDurationFilter(all, getMaxDurationMs());
+    const all    = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey || null, state.plexToken);
+    const byDur  = applyDurationFilter(all, getMaxDurationMs());
+    const movies = applyExcludeGenreFilter(byDur);
     const n    = movies.length;
     const pick = Math.min(n, MOVIES_COUNT);
     hint.textContent = n > 0
@@ -1379,8 +1409,9 @@ function wireLibraryForm(servers, initialLibs) {
     setBtn('btn-create-session', true);
     try {
       const raw        = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
-      const filtered   = applyDurationFilter(raw, getMaxDurationMs());
-      if (!filtered.length) throw new Error('No movies found for that selection. Try adjusting the genre or duration filter.');
+      const byDur      = applyDurationFilter(raw, getMaxDurationMs());
+      const filtered   = applyExcludeGenreFilter(byDur);
+      if (!filtered.length) throw new Error('No movies found for that selection. Try adjusting the filters.');
 
       const picked     = pickMovies(filtered, MOVIES_COUNT);
       // Fetch TMDB poster URLs in parallel for all picked movies.

@@ -203,6 +203,16 @@
       background: var(--card2); border-radius: 6px; padding: 2px 8px;
       font-size: 11px; color: var(--subtle);
     }
+    .genre-chip-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .genre-chip {
+      padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500;
+      border: 1.5px solid var(--card2); background: transparent; color: var(--subtle);
+      cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .genre-chip.excluded {
+      background: rgba(248,113,113,.15); border-color: var(--red); color: var(--red);
+    }
 
     /* ── Swipe Controls ──────────────────────────── */
     .swipe-controls {
@@ -538,6 +548,10 @@
               <option value="150">Up to 150 min</option>
               <option value="180">Up to 180 min</option>
             </select>
+          </div>
+          <div class="input-group" id="exclude-genre-group" style="display:none">
+            <label>Exclude genres <span style="color:var(--muted);font-weight:400">(optional — tap to block)</span></label>
+            <div id="exclude-genre-chips" class="genre-chip-grid"></div>
           </div>
           <div id="movie-count-hint" class="text-muted text-center" style="font-size:13px"></div>
           <button class="btn btn-primary" id="btn-create-session">🚀 Create Session</button>
