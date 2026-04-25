@@ -1035,6 +1035,37 @@ function populateGenreSelect(genres) {
   });
 }
 
+function initYearRangeSelect() {
+  const sel = document.getElementById('select-year-range');
+  if (!sel) return;
+  const cur = new Date().getFullYear();
+  const decade = Math.floor(cur / 10) * 10;
+  sel.innerHTML = `
+    <option value="">📅 Any year</option>
+    <option value="${cur - 4}:${cur}">Last 5 years (${cur - 4}–${cur})</option>
+    <option value="${cur - 9}:${cur}">Last 10 years (${cur - 9}–${cur})</option>
+    <option value="${decade}:${decade + 9}">${decade}s</option>
+    <option value="${decade - 10}:${decade - 1}">${decade - 10}s</option>
+    <option value="${decade - 20}:${decade - 11}">${decade - 20}s</option>
+    <option value="${decade - 30}:${decade - 21}">${decade - 30}s</option>
+    <option value="${decade - 40}:${decade - 31}">${decade - 40}s</option>
+    <option value="0:${decade - 41}">Before ${decade - 40}</option>
+  `;
+}
+
+function applyYearFilter(movies) {
+  const val = document.getElementById('select-year-range')?.value ?? '';
+  if (!val) return movies;
+  const [from, to] = val.split(':').map(Number);
+  return movies.filter(m => {
+    const y = parseInt(m.year, 10);
+    if (!y) return true; // no year metadata → don't exclude
+    if (from && y < from) return false;
+    if (to  && y > to)   return false;
+    return true;
+  });
+}
+
 function getMaxDurationMs() {
   const mins = parseInt(document.getElementById('select-duration')?.value ?? '0', 10);
   return mins > 0 ? mins * 60000 : 0;
@@ -1123,7 +1154,8 @@ async function refreshMovieCount(sectionKey, genreFastKey) {
   const hint = document.getElementById('movie-count-hint');
   try {
     const all    = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey || null, state.plexToken);
-    const byDur  = applyDurationFilter(all, getMaxDurationMs());
+    const byYear = applyYearFilter(all);
+    const byDur  = applyDurationFilter(byYear, getMaxDurationMs());
     const movies = applyExcludeGenreFilter(byDur);
     const n    = movies.length;
     const pick = Math.min(n, MOVIES_COUNT);
@@ -1146,6 +1178,8 @@ document.addEventListener('DOMContentLoaded', () => {
     showScreen('screen-setup-needed');
     return;
   }
+
+  initYearRangeSelect();
 
   // Wire ALL handlers first — this must run regardless of whether
   // we're doing a fresh start or recovering from a page reload.
@@ -1380,6 +1414,7 @@ function wireLibraryForm(servers, initialLibs) {
   const serverSel   = document.getElementById('select-server');
   const librarySel  = document.getElementById('select-library');
   const genreSel    = document.getElementById('select-genre');
+  const yearSel     = document.getElementById('select-year-range');
   const durationSel = document.getElementById('select-duration');
 
   serverSel.onchange = async () => {
@@ -1412,6 +1447,10 @@ function wireLibraryForm(servers, initialLibs) {
     await refreshMovieCount(state.plexLibrary.key, genreSel.value);
   };
 
+  yearSel.onchange = async () => {
+    await refreshMovieCount(state.plexLibrary.key, genreSel.value);
+  };
+
   durationSel.onchange = async () => {
     await refreshMovieCount(state.plexLibrary.key, genreSel.value);
   };
@@ -1424,7 +1463,8 @@ function wireLibraryForm(servers, initialLibs) {
     setBtn('btn-create-session', true);
     try {
       const raw        = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
-      const byDur      = applyDurationFilter(raw, getMaxDurationMs());
+      const byYear     = applyYearFilter(raw);
+      const byDur      = applyDurationFilter(byYear, getMaxDurationMs());
       const filtered   = applyExcludeGenreFilter(byDur);
       if (!filtered.length) throw new Error('No movies found for that selection. Try adjusting the filters.');
 
