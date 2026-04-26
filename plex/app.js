@@ -39,6 +39,7 @@ let wheelRotation      = 0;      // current canvas rotation in radians
 let wheelAnimating     = false;
 let _latestWheelData   = null;   // most recent wheel snapshot from Firebase
 let _lastAnimatedSpinId = null;  // dedup: prevent re-animating the same spin
+let _watchdogClearedAt  = 0;     // last time the watchdog cleared a stale pendingSpin (cooldown)
 
 const state = {
   role:        null,   // 'host' | 'guest'
@@ -859,7 +860,12 @@ function onWheelUpdate(wheelData) {
   // Stale-spin recovery: if pendingSpin has been stuck for >15s (animation is
   // 4.2s, so this is ~3.5x), the spinner likely closed their tab mid-spin or
   // their network died. Any client clears it; Firebase merges idempotent writes.
-  if (pendingSpin?.startedAt && Date.now() - pendingSpin.startedAt > 15000 && !wheelAnimating) {
+  // 5s cooldown after a clear prevents racing with a successful commit that's
+  // still in-flight (commit also nulls pendingSpin, so a duplicate clear is OK,
+  // but the cooldown stops every client from spamming the same write).
+  const watchdogCooldown = Date.now() - _watchdogClearedAt < 5000;
+  if (pendingSpin?.startedAt && Date.now() - pendingSpin.startedAt > 15000 && !wheelAnimating && !watchdogCooldown) {
+    _watchdogClearedAt  = Date.now();
     _lastAnimatedSpinId = null;
     fbUpdate(`sessions/${state.sessionCode}/wheel`, { pendingSpin: null }).catch(() => {});
     return;
@@ -884,12 +890,16 @@ function onWheelUpdate(wheelData) {
         drawWheel(wheelMovies, wheelRotation);
 
         // The spinner commits the elimination to Firebase.
-        // Guard: skip if the Firebase state has already advanced past this spin
-        // (can happen when the commit round-trips back mid-animation and another
-        // player spins before our callback fires, which would overwrite their
-        // pendingSpin with null).
+        // Guard: skip if the Firebase state has already advanced past this spin,
+        // OR if the latest snapshot says someone else is the spinner now (handles
+        // the case where wheel state diverged across clients).
+        const latestTurnOrder = Array.isArray(_latestWheelData?.turnOrder)
+          ? _latestWheelData.turnOrder
+          : Object.values(_latestWheelData?.turnOrder ?? {});
+        const latestSpinner = latestTurnOrder[spinIndex % (latestTurnOrder.length || 1)] ?? {};
         if (currentTurn.userId === state.userId &&
-            (_latestWheelData?.spinIndex ?? spinIndex) === spinIndex) {
+            (_latestWheelData?.spinIndex ?? spinIndex) === spinIndex &&
+            latestSpinner.userId === state.userId) {
           const newRemaining  = remaining.filter(m => m.id !== eliminateId);
           const newEliminated = [...eliminated, eliminateId];
           fbUpdate(`sessions/${state.sessionCode}/wheel`, {
@@ -1244,6 +1254,14 @@ function wireAllHandlers() {
   // ── Landing ──
   document.getElementById('btn-start-session').onclick = () => {
     state.role = 'host';
+    // Reset the Connect-with-Plex button + status: the success path navigates
+    // away without re-enabling it, so a returning host would otherwise see a
+    // stuck disabled button.
+    setBtn('btn-connect-plex', false,
+      `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.09 2.16L4.5 7.43v9.14l6.59 5.27 6.59-5.27V7.43L11.09 2.16zm4.34 12.59l-4.34 3.47-4.34-3.47V9.25l4.34-3.47 4.34 3.47v5.5z"/></svg> Connect with Plex`);
+    const statusEl = document.getElementById('auth-status');
+    statusEl.style.display = 'none';
+    statusEl.className = 'auth-status';
     showScreen('screen-auth');
     document.getElementById('host-name-input').focus();
   };
@@ -1253,6 +1271,8 @@ function wireAllHandlers() {
     if (code.length !== 6) { toast('Enter a valid session code', 'error'); return; }
     state.sessionCode = code;
     state.role = 'guest';
+    // Reset the Join button — success path navigates away and never re-enables.
+    setBtn('btn-join-confirm', false, 'Join Session →');
     showScreen('screen-join-name');
     document.getElementById('guest-name-input').focus();
   };
