@@ -441,6 +441,24 @@ function onSessionUpdate(session) {
     return;
   }
 
+  // Results/wheel → swiping (host kicked off another round in the same session
+  // via "Pick Another Set"). Wipe local wheel state and restart swiping with
+  // the fresh movie pool the host wrote to Firebase.
+  if (session.status === 'swiping' &&
+      (activeScreen === 'screen-results' || activeScreen === 'screen-wheel')) {
+    const overlay = document.getElementById('winner-overlay');
+    if (overlay) overlay.style.display = 'none';
+    wheelMovies = []; wheelRotation = 0; wheelAnimating = false;
+    _latestWheelData = null; _lastAnimatedSpinId = null;
+    if (wheelUnsubscribe) { wheelUnsubscribe(); wheelUnsubscribe = null; }
+    state.movies     = normaliseMoviesFromFirebase(session.movies);
+    state.swipes     = {};
+    state.currentIdx = 0;
+    clearSwipeProgress();
+    startSwiping();
+    return;
+  }
+
   // All logic from the waiting screen — only transition to results from here
   // so a stale listener on screen-library / screen-landing never fires showResults.
   if (activeScreen === 'screen-waiting') {
@@ -1412,29 +1430,11 @@ function wireAllHandlers() {
   });
 
   // ── Results ──
-  document.getElementById('btn-play-again').onclick = () => {
-    if (state.role !== 'host') { toast('Ask the host to start a new set.', 'info'); return; }
-    // Tear down old session listener so it never fires showResults over the library screen.
-    // Keep Plex auth/library state so the host can adjust filters and go again immediately.
-    if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
-    if (wheelUnsubscribe)   { wheelUnsubscribe();   wheelUnsubscribe   = null; }
-    wheelMovies = []; wheelRotation = 0; wheelAnimating = false;
-    _latestWheelData = null; _lastAnimatedSpinId = null;
-    const overlay = document.getElementById('winner-overlay');
-    if (overlay) overlay.style.display = 'none';
-    sessionStorage.removeItem('pf_session');
-    clearSwipeProgress();
-    state.sessionCode = null; state.movies = []; state.swipes = {}; state.currentIdx = 0;
-    // Clear excluded genres + reset chip UI so the next round starts fresh
-    state.excludedGenres.clear();
-    document.querySelectorAll('#exclude-genre-chips .genre-chip.excluded')
-      .forEach(chip => chip.classList.remove('excluded'));
-    showScreen('screen-library');
-    if (state.plexLibrary?.key) {
-      refreshMovieCount(state.plexLibrary.key, document.getElementById('select-genre')?.value ?? '');
-    }
-  };
-  document.getElementById('btn-leave-session').onclick = clearSession;
+  // Pick Another Set keeps the same session/code/participants/filters and
+  // just refreshes the movie pool. Everyone gets transitioned back to swiping.
+  document.getElementById('btn-play-again').onclick      = startNewRound;
+  document.getElementById('btn-winner-play-again').onclick = startNewRound;
+  document.getElementById('btn-leave-session').onclick     = clearSession;
 
   // Persistent leave button on every session screen (lobby/swipe/waiting/wheel).
   // Confirms first so people don't accidentally tap out mid-game.
@@ -1466,8 +1466,9 @@ function wireAllHandlers() {
     });
   };
 
-  document.getElementById('btn-winner-play-again').onclick = clearSession;
-  document.getElementById('btn-winner-leave').onclick      = clearSession;
+  // btn-winner-play-again is wired to startNewRound above (results section);
+  // the winner overlay shares the same handler.
+  document.getElementById('btn-winner-leave').onclick = clearSession;
 }
 
 function wireLibraryForm(servers, initialLibs) {
@@ -1553,6 +1554,77 @@ function wireLibraryForm(servers, initialLibs) {
       setBtn('btn-create-session', false, '🚀 Create Session');
     }
   };
+}
+
+// Host kicks off another round in the SAME session — same code, same
+// participants, same filters — but a fresh pool of movies. Everyone (host +
+// guests) is transitioned back to swiping via onSessionUpdate when status
+// flips back to 'swiping'.
+async function startNewRound() {
+  if (state.role !== 'host') {
+    toast('Ask the host to start a new set.', 'info');
+    return;
+  }
+  if (!state.plexLibrary?.key || !state.plexServerUri || !state.plexToken) {
+    toast('Plex connection lost — leaving session.', 'error');
+    clearSession();
+    return;
+  }
+
+  setBtn('btn-play-again',        true);
+  setBtn('btn-winner-play-again', true);
+  try {
+    const sectionKey   = state.plexLibrary.key;
+    const genreFastKey = document.getElementById('select-genre')?.value || null;
+    const raw          = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
+    const byYear       = applyYearFilter(raw);
+    const byDur        = applyDurationFilter(byYear, getMaxDurationMs());
+    const filtered     = applyExcludeGenreFilter(byDur);
+    if (!filtered.length) throw new Error('No movies left to show — adjust filters and try again.');
+
+    const picked      = pickMovies(filtered, MOVIES_COUNT);
+    const tmdbPosters = await fetchTmdbPosters(picked);
+    const newMovies   = picked.map(m => formatMovie(
+      m, state.plexImageUri, state.plexToken, tmdbPosters[String(m.ratingKey)] ?? null
+    ));
+
+    // Atomic multi-path reset: new movie pool, wipe all swipes + wheel,
+    // unset every participant's done flag, status back to 'swiping'.
+    const session = await fbGet(`sessions/${state.sessionCode}`);
+    const updates = {
+      [`sessions/${state.sessionCode}/movies`]: newMovies,
+      [`sessions/${state.sessionCode}/swipes`]: null,
+      [`sessions/${state.sessionCode}/wheel`]:  null,
+      [`sessions/${state.sessionCode}/status`]: 'swiping',
+    };
+    Object.keys(session?.participants ?? {}).forEach(uid => {
+      updates[`sessions/${state.sessionCode}/participants/${uid}/done`] = false;
+    });
+    await db.ref('/').update(updates);
+
+    // Host transitions locally — guests pick this up via the new
+    // results/wheel → swiping transition in onSessionUpdate.
+    const overlay = document.getElementById('winner-overlay');
+    if (overlay) overlay.style.display = 'none';
+    wheelMovies = []; wheelRotation = 0; wheelAnimating = false;
+    _latestWheelData = null; _lastAnimatedSpinId = null;
+    if (wheelUnsubscribe) { wheelUnsubscribe(); wheelUnsubscribe = null; }
+    state.movies     = newMovies;
+    state.swipes     = {};
+    state.currentIdx = 0;
+    clearSwipeProgress();
+    startSwiping();
+  } catch (e) {
+    if (e.message === 'PLEX_AUTH_EXPIRED') {
+      toast('Plex sign-in expired — please reconnect.', 'error');
+      clearSession();
+    } else {
+      toast(e.message, 'error');
+    }
+  } finally {
+    setBtn('btn-play-again',        false, '🔄 Pick Another Set');
+    setBtn('btn-winner-play-again', false, '🔄 Play Again');
+  }
 }
 
 function clearSession() {
