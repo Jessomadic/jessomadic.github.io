@@ -338,7 +338,7 @@ function formatMovie(m, plexUri, token, tmdbUrl = null) {
   // Prefer TMDB poster (globally accessible CDN, no auth) over Plex relay.
   // Plex relay URL is kept as the fallback for movies with no TMDB match.
   const plexPoster = m.thumb
-    ? `${plexUri}${m.thumb}?X-Plex-Token=${token}&width=300&height=450`
+    ? `${plexUri}${m.thumb}?X-Plex-Token=${token}&width=200&height=300`
     : null;
   return {
     id:            String(m.ratingKey),
@@ -513,10 +513,16 @@ function buildCard(movie) {
     ? `<div class="genre-tags">${genreList.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>`
     : '';
 
+  const placeholderHtml = `
+    <div class="poster-placeholder" style="display:${movie.poster ? 'none' : 'flex'}">
+      <div class="ph-icon">🎬</div>
+      <div class="ph-title">${escHtml(movie.title)}</div>
+      ${movie.year ? `<div class="ph-meta">${escHtml(movie.year)}</div>` : ''}
+    </div>`;
   card.innerHTML = `
     <div class="card-poster">
       ${posterHtml}
-      <div class="poster-placeholder" style="display:${movie.poster ? 'none' : 'flex'}">🎬</div>
+      ${placeholderHtml}
       <div class="poster-overlay"></div>
       <div class="card-color-overlay"></div>
       <div class="stamp stamp-like">LIKE</div>
@@ -818,6 +824,15 @@ function onWheelUpdate(wheelData) {
   // ── Animation / static display ──
   // The flag tracks whether we just kicked off a NEW animation in this call.
   let animationStarted = false;
+
+  // Stale-spin recovery: if pendingSpin has been stuck for >15s (animation is
+  // 4.2s, so this is ~3.5x), the spinner likely closed their tab mid-spin or
+  // their network died. Any client clears it; Firebase merges idempotent writes.
+  if (pendingSpin?.startedAt && Date.now() - pendingSpin.startedAt > 15000 && !wheelAnimating) {
+    _lastAnimatedSpinId = null;
+    fbUpdate(`sessions/${state.sessionCode}/wheel`, { pendingSpin: null }).catch(() => {});
+    return;
+  }
 
   if (pendingSpin && !wheelAnimating) {
     const spinId = `${spinIndex}:${pendingSpin.eliminateId}`;
@@ -1326,6 +1341,12 @@ function wireAllHandlers() {
       form.style.display       = 'flex';
       form.style.flexDirection = 'column';
 
+      // Warn host once if TMDB isn't configured — guests will get unreliable
+      // posters because the Plex relay throttles to 1 Mbps per user.
+      if (!window.tmdbApiKey || window.tmdbApiKey === 'YOUR_TMDB_API_KEY') {
+        toast('TMDB key missing — guest posters may be slow. See repo secrets.', 'error');
+      }
+
       wireLibraryForm(servers, libs);
     } catch (e) {
       toast(e.message, 'error');
@@ -1410,7 +1431,7 @@ function wireAllHandlers() {
     finalAngle = ((finalAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     document.getElementById('btn-spin').disabled = true;
     await fbUpdate(`sessions/${state.sessionCode}/wheel`, {
-      pendingSpin: { eliminateId, targetAngle: finalAngle },
+      pendingSpin: { eliminateId, targetAngle: finalAngle, startedAt: Date.now() },
     });
   };
 
