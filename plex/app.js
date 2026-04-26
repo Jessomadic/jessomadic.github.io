@@ -264,11 +264,17 @@ async function bestUri(server, token) {
   // prefer ANY relay — even untested — so guests on other networks can reach it.
   const anyRelay = server.connections.find(c => c.relay)?.uri;
   const imageUri = firstWorkingRelay ?? anyRelay ?? apiUri;
+  // Warn the host if no relay was reachable — TMDB will mostly cover guests
+  // but movies without a tmdb:// guid will fall back to this URL and fail.
+  if (!firstWorkingRelay && !anyRelay) {
+    toast('No Plex relay found — posters without TMDB matches may not load.', 'error');
+  }
   return { apiUri, imageUri };
 }
 
 async function plexGetLibraries(uri, token) {
   const r = await fetch(`${uri}/library/sections`, { headers: plexHeaders(token) });
+  if (r.status === 401) throw new Error('PLEX_AUTH_EXPIRED');
   if (!r.ok) throw new Error('Could not load Plex libraries.');
   const d = await r.json();
   return (d.MediaContainer.Directory ?? []).filter(lib => lib.type === 'movie');
@@ -290,6 +296,7 @@ async function plexGetMovies(uri, sectionKey, genreFastKey, token) {
   url += '&X-Plex-Container-Start=0&X-Plex-Container-Size=5000';
 
   const r = await fetch(url, { headers: plexHeaders(token) });
+  if (r.status === 401) throw new Error('PLEX_AUTH_EXPIRED');
   if (!r.ok) throw new Error('Failed to fetch movies from Plex.');
   const d = await r.json();
   return d.MediaContainer.Metadata ?? [];
@@ -410,7 +417,7 @@ function showLobby(code, isHost) {
 function updateLobbyParticipants(participants) {
   const list  = document.getElementById('participant-list');
   const count = document.getElementById('participant-count');
-  const entries = Object.values(participants ?? {});
+  const entries = Object.values(participants ?? {}).filter(Boolean);
   count.textContent = `${entries.length}/4`;
   list.innerHTML = entries.map(p => `
     <div class="chip">
@@ -445,7 +452,7 @@ function onSessionUpdate(session) {
     }
 
     // Host sets status=done once every participant has finished swiping
-    const parts   = Object.values(session.participants ?? {});
+    const parts   = Object.values(session.participants ?? {}).filter(Boolean);
     const allDone = parts.length > 0 && parts.every(p => p.done);
     if (allDone && state.role === 'host') {
       fbUpdate(`sessions/${state.sessionCode}`, { status: 'done' });
@@ -655,7 +662,7 @@ async function finishSwiping() {
 
 function updateWaitingProgress(participants) {
   const list = document.getElementById('waiting-participant-list');
-  list.innerHTML = Object.values(participants ?? {}).map(p => `
+  list.innerHTML = Object.values(participants ?? {}).filter(Boolean).map(p => `
     <div class="chip">
       <div class="dot ${p.done ? 'done' : 'waiting'}"></div>
       ${escHtml(p.name)} ${p.done ? '✓' : '…'}
@@ -671,7 +678,7 @@ function showResults(session) {
 
   const matches = movies
     .map(movie => {
-      const yesVotes = Object.values(allSwipes).filter(u => u[movie.id] === true).length;
+      const yesVotes = Object.values(allSwipes).filter(u => u && u[movie.id] === true).length;
       const pct      = pCount ? yesVotes / pCount : 0;
       return { movie, pct, yesVotes };
     })
@@ -1404,6 +1411,10 @@ function wireAllHandlers() {
     if (overlay) overlay.style.display = 'none';
     sessionStorage.removeItem('pf_session');
     state.sessionCode = null; state.movies = []; state.swipes = {}; state.currentIdx = 0;
+    // Clear excluded genres + reset chip UI so the next round starts fresh
+    state.excludedGenres.clear();
+    document.querySelectorAll('#exclude-genre-chips .genre-chip.excluded')
+      .forEach(chip => chip.classList.remove('excluded'));
     showScreen('screen-library');
     if (state.plexLibrary?.key) {
       refreshMovieCount(state.plexLibrary.key, document.getElementById('select-genre')?.value ?? '');
@@ -1512,7 +1523,12 @@ function wireLibraryForm(servers, initialLibs) {
       document.getElementById('lobby-movie-info').textContent =
         `${state.movies.length} movies · ${state.plexLibrary?.title ?? 'your library'}`;
     } catch (e) {
-      toast(e.message, 'error');
+      if (e.message === 'PLEX_AUTH_EXPIRED') {
+        toast('Plex sign-in expired — please reconnect.', 'error');
+        clearSession();
+      } else {
+        toast(e.message, 'error');
+      }
     } finally {
       setBtn('btn-create-session', false, '🚀 Create Session');
     }
@@ -1521,7 +1537,7 @@ function wireLibraryForm(servers, initialLibs) {
 
 function clearSession() {
   if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
-  if (wheelUnsubscribe) { wheelUnsubscribe(); wheelUnsubscribe = null; }
+  if (wheelUnsubscribe)   { wheelUnsubscribe();   wheelUnsubscribe   = null; }
   wheelMovies         = [];
   wheelRotation       = 0;
   wheelAnimating      = false;
@@ -1532,9 +1548,21 @@ function clearSession() {
   sessionStorage.removeItem('pf_session');
   sessionStorage.removeItem('pf_role');
   sessionStorage.removeItem('pf_token');
-  state.sessionCode = null;
-  state.movies      = [];
-  state.swipes      = {};
-  state.currentIdx  = 0;
+  // Reset all session-scoped state including Plex auth — clearSession sends the
+  // user back to landing, where they must re-authenticate to do anything.
+  state.sessionCode    = null;
+  state.movies         = [];
+  state.swipes         = {};
+  state.currentIdx     = 0;
+  state.plexToken      = null;
+  state.plexServers    = [];
+  state.plexServerUri  = null;
+  state.plexImageUri   = null;
+  state.plexLibrary    = null;
+  state.userName       = null;
+  state.role           = null;
+  state.excludedGenres.clear();
+  document.querySelectorAll('#exclude-genre-chips .genre-chip.excluded')
+    .forEach(chip => chip.classList.remove('excluded'));
   showScreen('screen-landing');
 }
