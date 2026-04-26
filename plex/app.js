@@ -10,7 +10,6 @@
 // ── Constants ────────────────────────────────────────────────
 const PLEX_PRODUCT   = 'PickFlick';
 const MOVIES_COUNT   = 30;
-const SEQUEL_MAX_RATIO = 0.20;  // at most 20 % of the picked pool can be sequels
 const THRESHOLD      = 0.5;   // majority = > 50%
 const POLL_INTERVAL  = 2000;  // ms between Plex PIN polls
 const AUTH_TIMEOUT   = 5 * 60 * 1000; // 5 min
@@ -461,10 +460,32 @@ function onSessionUpdate(session) {
 }
 
 // ── Swipe UI ─────────────────────────────────────────────────
+// Persist swipe progress so a refresh (or a poster-induced lockup) doesn't
+// throw away the user's votes. Shuffled movie order is saved too — without
+// it a refresh would re-shuffle and the saved currentIdx would point at a
+// different movie than the user actually saw.
+function persistSwipeProgress() {
+  try {
+    sessionStorage.setItem('pf_movies', JSON.stringify(state.movies));
+    sessionStorage.setItem('pf_swipes', JSON.stringify(state.swipes));
+    sessionStorage.setItem('pf_idx',    String(state.currentIdx));
+  } catch { /* storage full or disabled — best-effort */ }
+}
+function clearSwipeProgress() {
+  sessionStorage.removeItem('pf_movies');
+  sessionStorage.removeItem('pf_swipes');
+  sessionStorage.removeItem('pf_idx');
+}
+
 function startSwiping() {
   state.currentIdx = 0;
   state.swipes = {};
   state.movies = shuffle(state.movies);
+  persistSwipeProgress();
+  resumeSwiping();
+}
+
+function resumeSwiping() {
   showScreen('screen-swipe');
   document.getElementById('swipe-session-code').textContent = state.sessionCode;
   renderStack();
@@ -626,6 +647,7 @@ function triggerSwipe(liked) {
 function recordSwipe(liked, movieId) {
   state.swipes[movieId] = liked;
   state.currentIdx++;
+  persistSwipeProgress();
   updateProgress();
 
   if (state.currentIdx >= state.movies.length) {
@@ -654,8 +676,10 @@ async function finishSwiping() {
   updates[`sessions/${state.sessionCode}/participants/${state.userId}/done`] = true;
   try {
     await db.ref('/').update(updates);
+    clearSwipeProgress(); // swipes safely in Firebase — local cache no longer needed
   } catch (e) {
     toast('Error saving swipes — check your connection.', 'error');
+    // Keep the local cache so the user can recover and retry on refresh
   }
   // Keep listening; onSessionUpdate will fire when all done
 }
@@ -1101,73 +1125,25 @@ function applyExcludeGenreFilter(movies) {
   return movies.filter(m => !(m.Genre ?? []).some(g => state.excludedGenres.has(g.tag)));
 }
 
-// Reduce a movie title to its franchise root so sequels sharing a root
-// are detected even when they have no number (e.g. "Avengers: Endgame" → "avengers").
-// Rules: strip trailing sequel markers, take the part before ":", normalise.
-function movieBaseName(title) {
-  let t = (title ?? '').trim();
-  t = t.replace(/\s+(?:II|III|IV|VI|VII|VIII|IX|X[IVX]*)\s*$/i, '');
-  t = t.replace(/\s+\d{1,2}\s*$/, '');
-  const ci = t.indexOf(':');
-  if (ci >= 4) t = t.slice(0, ci); // "Avengers: Age of Ultron" → "Avengers"
-  return t.toLowerCase().replace(/^(?:the|a|an)\s+/, '').trim();
-}
-
-// Returns true when the title alone indicates a sequel (numbered or keyed).
+// Conservative sequel detector — only catches explicit numbered/Roman
+// follow-ups like "Fox and the Hound 2", "Iron Man 3", "Rocky II",
+// "Harry Potter ... Part 2". Subtitle-only sequels ("Avengers: Endgame")
+// slip through intentionally — false positives ("9", "300", "1917") are worse.
 function isSequel(m) {
   const t = (m.title ?? '').trim();
   return (
-    /\s+(?:II|III|IV|VI|VII|VIII|IX|X[IVX]*)\s*$/i.test(t) ||
-    /\b(?:Part|Chapter|Episode|Vol\.?)\s*(?:\d+|[IVX]{2,})\b/i.test(t) ||
-    /\s+\d{1,2}\s*$/.test(t) ||
-    /\s+\d{1,2}\s*:/.test(t)
+    /\s+(?:II|III|IV|VI|VII|VIII|IX|X[IVX]*)\s*$/i.test(t) ||  // Rocky II
+    /\s+\d{1,2}\s*$/.test(t) ||                                 // Fox and the Hound 2
+    /\b(?:Part|Chapter|Vol\.?)\s+(?:\d+|[IVX]{2,})\b/i.test(t)  // Deathly Hallows: Part 2
   );
 }
 
-// Pick `count` movies capping franchise entries at SEQUEL_MAX_RATIO.
-// Three layers of franchise detection (most → least reliable):
-//   1. Plex Collection tags (when available on the server)
-//   2. Title-base grouping: strip sequel markers, take part before ":",
-//      normalise — "The Avengers" and "Avengers: Endgame" share base "avengers"
-//   3. Title regex: numbered sequels ("Saw 2", "Rocky IV")
-// The first movie encountered from any franchise is the "representative" (nonSeq).
-// All subsequent entries from the same franchise are capped by SEQUEL_MAX_RATIO.
-// Slack propagates both ways so we always fill the pool without short-changing.
+// Pick `count` movies, hard-filtering obvious numbered sequels.
+// Falls back to the unfiltered pool if filtering leaves us short.
 function pickMovies(movies, count) {
-  const maxSeq          = Math.floor(count * SEQUEL_MAX_RATIO);
-  const shuffled        = shuffle(movies);
-  const seenCollections = new Set();
-  const seenBases       = new Set();
-  const nonSeq          = [];
-  const seqList         = [];
-
-  for (const m of shuffled) {
-    const collections = (m.Collection ?? []).map(c => c.tag).filter(Boolean);
-    const collHit     = collections.some(t => seenCollections.has(t));
-    const base        = movieBaseName(m.title ?? '');
-    const baseEligible = base.length >= 3 && !/^\d+$/.test(base); // skip "300", "1917"
-    const baseHit     = baseEligible && seenBases.has(base);
-
-    if (collHit || baseHit || isSequel(m)) {
-      seqList.push(m);
-    } else {
-      nonSeq.push(m);
-      collections.forEach(t => seenCollections.add(t));
-      if (baseEligible) seenBases.add(base);
-    }
-  }
-
-  const nsSlice  = Math.min(nonSeq.length, count - maxSeq);
-  const slackNs  = (count - maxSeq) - nsSlice;
-  const seqSlice = Math.min(seqList.length, maxSeq + slackNs);
-  const slackSeq = (maxSeq + slackNs) - seqSlice;
-  const nsExtra  = Math.min(nonSeq.length - nsSlice, slackSeq);
-
-  return [
-    ...nonSeq.slice(0, nsSlice),
-    ...seqList.slice(0, seqSlice),
-    ...nonSeq.slice(nsSlice, nsSlice + nsExtra),
-  ].slice(0, count);
+  const filtered = movies.filter(m => !isSequel(m));
+  const pool     = filtered.length >= count ? filtered : movies;
+  return shuffle(pool).slice(0, Math.min(count, pool.length));
 }
 
 async function refreshMovieCount(sectionKey, genreFastKey) {
@@ -1231,7 +1207,24 @@ document.addEventListener('DOMContentLoaded', () => {
           showScreen('screen-waiting');
           updateWaitingProgress(session.participants);
         } else {
-          startSwiping();
+          // Restore swipe progress from sessionStorage if available — the user
+          // refreshed mid-swipe and we want to pick up exactly where they left
+          // off (same shuffle order, same currentIdx, same swipes recorded).
+          const savedMovies = sessionStorage.getItem('pf_movies');
+          const savedSwipes = sessionStorage.getItem('pf_swipes');
+          const savedIdx    = sessionStorage.getItem('pf_idx');
+          if (savedMovies && savedIdx) {
+            try {
+              state.movies     = JSON.parse(savedMovies);
+              state.swipes     = savedSwipes ? JSON.parse(savedSwipes) : {};
+              state.currentIdx = parseInt(savedIdx, 10) || 0;
+              resumeSwiping();
+            } catch {
+              startSwiping();
+            }
+          } else {
+            startSwiping();
+          }
         }
         // Hand off to normal listener — onSessionUpdate won't re-call startSwiping()
         // because it only does so when transitioning FROM screen-lobby.
@@ -1410,6 +1403,7 @@ function wireAllHandlers() {
     const overlay = document.getElementById('winner-overlay');
     if (overlay) overlay.style.display = 'none';
     sessionStorage.removeItem('pf_session');
+    clearSwipeProgress();
     state.sessionCode = null; state.movies = []; state.swipes = {}; state.currentIdx = 0;
     // Clear excluded genres + reset chip UI so the next round starts fresh
     state.excludedGenres.clear();
@@ -1554,6 +1548,7 @@ function clearSession() {
   sessionStorage.removeItem('pf_session');
   sessionStorage.removeItem('pf_role');
   sessionStorage.removeItem('pf_token');
+  clearSwipeProgress();
   // Reset all session-scoped state including Plex auth — clearSession sends the
   // user back to landing, where they must re-authenticate to do anything.
   state.sessionCode    = null;
