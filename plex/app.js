@@ -1422,6 +1422,12 @@ function wireAllHandlers() {
   };
   document.getElementById('btn-leave-session').onclick = clearSession;
 
+  // Persistent leave button on every session screen (lobby/swipe/waiting/wheel).
+  // Confirms first so people don't accidentally tap out mid-game.
+  document.querySelectorAll('[data-quit]').forEach(btn => {
+    btn.onclick = () => { if (confirm('Leave this session?')) clearSession(); };
+  });
+
   // ── Wheel ──
   document.getElementById('btn-spin').onclick = async () => {
     if (wheelAnimating || wheelMovies.length <= 1) return;

@@ -72,6 +72,15 @@
       cursor: pointer; border: none; transition: all .2s; width: 100%;
     }
     .btn:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+    .btn-quit {
+      position: absolute; top: 12px; right: 12px; z-index: 5;
+      width: 32px; height: 32px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,.06); color: var(--subtle);
+      font-size: 16px; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent; transition: background .15s, color .15s;
+    }
+    .btn-quit:hover, .btn-quit:active { background: rgba(248,113,113,.2); color: var(--red); }
     .btn-primary {
       background: linear-gradient(135deg, var(--purple), var(--pink));
       color: #fff;
@@ -574,6 +583,7 @@
        SCREEN: Lobby
   ══════════════════════════════════════════════ -->
   <div id="screen-lobby" class="screen">
+    <button class="btn-quit" data-quit title="Leave session">✕</button>
     <div class="screen-inner fade-up">
       <div class="card text-center">
         <p class="text-subtle" style="font-size:13px;text-transform:uppercase;letter-spacing:.08em;font-weight:600">Session Code</p>
@@ -609,6 +619,7 @@
        SCREEN: Swiping
   ══════════════════════════════════════════════ -->
   <div id="screen-swipe" class="screen">
+    <button class="btn-quit" data-quit title="Leave session">✕</button>
     <div style="width:100%;max-width:420px;padding:0 20px">
       <div class="row" style="justify-content:space-between;margin-bottom:10px">
         <span class="logo" style="font-size:20px">PickFlick</span>
@@ -635,6 +646,7 @@
        SCREEN: Waiting for others
   ══════════════════════════════════════════════ -->
   <div id="screen-waiting" class="screen">
+    <button class="btn-quit" data-quit title="Leave session">✕</button>
     <div class="screen-inner text-center fade-up">
       <div style="font-size:56px;margin-bottom:12px">🍿</div>
       <h2>All done!</h2>
@@ -654,6 +666,7 @@
        SCREEN: Wheel — spin to eliminate matches
   ══════════════════════════════════════════════ -->
   <div id="screen-wheel" class="screen">
+    <button class="btn-quit" data-quit title="Leave session">✕</button>
     <div style="width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 16px">
       <div class="row" style="width:100%;justify-content:space-between;margin-bottom:2px">
         <span class="logo" style="font-size:20px">PickFlick</span>
