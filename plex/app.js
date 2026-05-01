@@ -56,6 +56,7 @@ const state = {
   swipes:        {},     // { movieId: true|false }
   currentIdx:    0,
   excludedGenres: new Set(),
+  aiMode:        false,  // true when session was created with AI movie picker
 };
 
 // ── ID helpers ───────────────────────────────────────────────
@@ -361,12 +362,13 @@ function formatMovie(m, plexUri, token, tmdbUrl = null) {
 }
 
 // ── Session helpers ───────────────────────────────────────────
-async function createSession(movies) {
+async function createSession(movies, aiMode = false) {
   const code = generateCode();
   const session = {
     hostId:    state.userId,
     createdAt: Date.now(),
     status:    'lobby',
+    aiMode:    aiMode || null, // null keeps Firebase clean when not in AI mode
     settings:  { threshold: THRESHOLD },
     movies,
     participants: {
@@ -401,14 +403,29 @@ async function joinSession(code) {
 }
 
 // ── Lobby ────────────────────────────────────────────────────
-function showLobby(code, isHost) {
+function showLobby(code, isHost, aiMode = false) {
   state.sessionCode = code;
+  state.aiMode      = !!aiMode;
   sessionStorage.setItem('pf_session', code);
   sessionStorage.setItem('pf_role', state.role);
 
   document.getElementById('lobby-code').textContent = code;
-  document.getElementById('lobby-host-actions').style.display = isHost ? '' : 'none';
-  document.getElementById('lobby-guest-wait').style.display   = isHost ? 'none' : '';
+
+  // Show/hide host actions; swap buttons depending on mode
+  if (isHost) {
+    document.getElementById('lobby-host-actions').style.display = '';
+    document.getElementById('btn-start-swiping').style.display   = aiMode ? 'none' : '';
+    document.getElementById('btn-ai-find-movies').style.display  = aiMode ? '' : 'none';
+  } else {
+    document.getElementById('lobby-host-actions').style.display = 'none';
+  }
+
+  document.getElementById('lobby-guest-wait').style.display = isHost ? 'none' : '';
+
+  // Show AI description section when session uses AI mode
+  const aiSection = document.getElementById('ai-lobby-section');
+  if (aiSection) aiSection.style.display = aiMode ? '' : 'none';
+
   showScreen('screen-lobby');
 
   sessionUnsubscribe = fbListen(`sessions/${code}`, onSessionUpdate);
@@ -432,7 +449,10 @@ function onSessionUpdate(session) {
 
   const activeScreen = document.querySelector('.screen.active')?.id;
 
-  if (activeScreen === 'screen-lobby') updateLobbyParticipants(session.participants);
+  if (activeScreen === 'screen-lobby') {
+    updateLobbyParticipants(session.participants);
+    if (session.aiMode) updateAiDescriptionStatus(session.participants, session.aiDescriptions);
+  }
 
   // Lobby → swiping transition (host clicked Start)
   if (session.status === 'swiping' && activeScreen === 'screen-lobby') {
@@ -1196,6 +1216,232 @@ function escHtml(str) {
   return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── AI / LM Studio (Beta) ─────────────────────────────────────
+// The LM Studio endpoint is stored in sessionStorage only — it's a local
+// network URL that must never leave the host's device or be written to Firebase.
+
+function getLmEndpoint() {
+  return sessionStorage.getItem('pf_lm_endpoint') ?? '';
+}
+function setLmEndpoint(url) {
+  if (url) sessionStorage.setItem('pf_lm_endpoint', url.trim().replace(/\/$/, ''));
+  else sessionStorage.removeItem('pf_lm_endpoint');
+}
+
+async function testLmConnection(endpoint) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch(`${endpoint}/v1/models`, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    return { ok: true, models: d.data ?? [] };
+  } catch (e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('Timed out — is LM Studio running and reachable from this browser?');
+    throw new Error(`Cannot reach LM Studio: ${e.message}. Enable CORS in LM Studio Settings → Server.`);
+  }
+}
+
+// Build a compact movie catalog for LLM context (id, title, year, genres, short summary).
+function buildAiCatalog(rawMovies) {
+  return rawMovies.map(m => ({
+    id:      String(m.ratingKey),
+    t:       m.title ?? '',
+    y:       m.year  ?? '',
+    g:       (m.Genre ?? []).map(g => g.tag).slice(0, 4),
+    s:       (m.summary ?? '').slice(0, 120),
+    r:       m.rating ? parseFloat(m.rating).toFixed(1) : null,
+    dur:     m.duration ? Math.round(m.duration / 60000) : null,
+  }));
+}
+
+function buildAiSystemPrompt() {
+  return `You are a movie curator helping a group of friends pick movies for their movie night from a Plex library.
+
+You will receive:
+1. Each participant's description of what mood, tone, or type of film they want tonight
+2. A JSON catalog of available movies: id, t=title, y=year, g=genres, s=summary, r=rating, dur=duration in minutes
+
+Your task: select 20–30 movies from the catalog that best satisfy the group's collective preferences.
+
+Guidelines:
+- Balance every participant's preferences — find films where tastes intersect
+- Favour variety: mix genres, tones, and eras when people want different things
+- Quality matters: 20 great matches beats 30 mediocre ones
+- Account for mood (fun, chill, intense, scary), tone (light, dark, quirky), and explicit requests
+- ONLY return IDs from the provided catalog — never invent or assume
+- If participants mention specific films they love, find thematically similar ones in the catalog
+
+CRITICAL: Respond ONLY with a single valid JSON object — no markdown, no code fences, no extra text:
+{"selected":["id1","id2",...],"reason":"One sentence explaining the curation"}`;
+}
+
+function buildAiUserPrompt(catalog, descriptions) {
+  const prefs = Object.values(descriptions)
+    .filter(d => d?.text?.trim())
+    .map(d => `${d.name}: "${d.text.trim()}"`)
+    .join('\n');
+
+  return `WHAT EVERYONE WANTS TONIGHT:\n${prefs}\n\nAVAILABLE MOVIES:\n${JSON.stringify(catalog)}`;
+}
+
+async function callLmStudio(endpoint, systemPrompt, userPrompt) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 90000); // 90s for slow local models
+  try {
+    const r = await fetch(`${endpoint}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'local-model',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: userPrompt   },
+        ],
+        temperature: 0.25,
+        max_tokens:  1000,
+        stream:      false,
+      }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      throw new Error(`LM Studio returned HTTP ${r.status}: ${body.slice(0, 200)}`);
+    }
+    const data = await r.json();
+    return data.choices?.[0]?.message?.content ?? '';
+  } catch (e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('LM Studio took too long (>90s). Try a smaller/faster model or reduce the library size.');
+    throw e;
+  }
+}
+
+function parseLmResponse(text) {
+  // Strip markdown code fences if the model wraps its output
+  let t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  const match = t.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('AI response did not contain JSON. Got: ' + t.slice(0, 300));
+  const parsed = JSON.parse(match[0]);
+  if (!Array.isArray(parsed.selected)) throw new Error('AI response missing "selected" array. Got: ' + t.slice(0, 300));
+  return parsed;
+}
+
+async function runAiPick() {
+  if (state.role !== 'host') {
+    toast('Waiting for the host to find movies…', 'info');
+    return;
+  }
+  const endpoint = getLmEndpoint();
+  if (!endpoint) {
+    toast('LM Studio URL not set — configure it in the library setup.', 'error');
+    return;
+  }
+  if (!state.plexLibrary?.key || !state.plexServerUri || !state.plexToken) {
+    toast('Plex connection lost — please start a new session.', 'error');
+    return;
+  }
+
+  const btn      = document.getElementById('btn-ai-find-movies');
+  const statusEl = document.getElementById('ai-pick-status-text');
+  const statusRow = document.getElementById('ai-pick-status-row');
+  if (btn) btn.disabled = true;
+  if (statusRow) statusRow.style.display = 'flex';
+
+  const setStatus = msg => { if (statusEl) statusEl.textContent = msg; };
+
+  try {
+    setStatus('🎬 Fetching your Plex library…');
+
+    // Fetch full library and apply year/duration filters but NOT genre filter
+    // so the AI has the widest reasonable pool to choose from.
+    const rawAll = await plexGetMovies(state.plexServerUri, state.plexLibrary.key, null, state.plexToken);
+    const byYear = applyYearFilter(rawAll);
+    const byDur  = applyDurationFilter(byYear, getMaxDurationMs());
+
+    // Cap at 400 movies to stay within typical local-model context limits.
+    // Randomise the crop so repeated runs surface different films.
+    const pool = byDur.length > 400 ? shuffle(byDur).slice(0, 400) : byDur;
+
+    if (!pool.length) throw new Error('No movies available with current filters. Adjust year/duration and try again.');
+
+    const catalog = buildAiCatalog(pool);
+
+    setStatus('📖 Reading everyone\'s preferences…');
+
+    const descriptions = await fbGet(`sessions/${state.sessionCode}/aiDescriptions`) ?? {};
+    const descCount    = Object.values(descriptions).filter(d => d?.text?.trim()).length;
+    if (descCount === 0) throw new Error('Nobody has submitted their preferences yet! Ask participants to describe what they want to watch.');
+
+    setStatus(`🧠 Asking AI to pick movies based on ${descCount} preference${descCount !== 1 ? 's' : ''}…`);
+
+    const raw      = await callLmStudio(endpoint, buildAiSystemPrompt(), buildAiUserPrompt(catalog, descriptions));
+    const parsed   = parseLmResponse(raw);
+    const selected = new Set(parsed.selected.map(String));
+
+    setStatus('✨ AI picked your movies! Loading posters…');
+
+    // Map selected IDs back to raw Plex objects
+    let finalRaw = pool.filter(m => selected.has(String(m.ratingKey)));
+
+    // Safety net: if AI returned too few matches, pad with random picks
+    if (finalRaw.length < 10) {
+      const extras = shuffle(pool.filter(m => !selected.has(String(m.ratingKey))));
+      finalRaw = [...finalRaw, ...extras].slice(0, MOVIES_COUNT);
+      toast(`AI found ${finalRaw.length} matches — padded to ${MOVIES_COUNT} with randoms.`, 'info');
+    } else {
+      finalRaw = finalRaw.slice(0, MOVIES_COUNT);
+    }
+
+    const tmdbPosters = await fetchTmdbPosters(finalRaw);
+    const newMovies   = finalRaw.map(m => formatMovie(
+      m, state.plexImageUri, state.plexToken, tmdbPosters[String(m.ratingKey)] ?? null
+    ));
+
+    if (parsed.reason) toast(`AI: ${parsed.reason}`, 'info');
+
+    // Atomic write: new movies, status → swiping, reset all done flags
+    const session = await fbGet(`sessions/${state.sessionCode}`);
+    const updates = {
+      [`sessions/${state.sessionCode}/movies`]: newMovies,
+      [`sessions/${state.sessionCode}/status`]: 'swiping',
+    };
+    Object.keys(session?.participants ?? {}).forEach(uid => {
+      updates[`sessions/${state.sessionCode}/participants/${uid}/done`] = false;
+    });
+    await db.ref('/').update(updates);
+
+    // Host transitions locally; guests pick up via onSessionUpdate
+    state.movies = newMovies;
+    startSwiping();
+
+  } catch (e) {
+    if (statusRow) statusRow.style.display = 'none';
+    if (btn) btn.disabled = false;
+    toast(e.message, 'error');
+  }
+}
+
+function updateAiDescriptionStatus(participants, descriptions) {
+  const statusList = document.getElementById('ai-desc-status-list');
+  const statusDiv  = document.getElementById('ai-desc-status');
+  if (!statusList || !statusDiv) return;
+  const parts = Object.entries(participants ?? {}).filter(([, p]) => p);
+  if (!parts.length) { statusDiv.style.display = 'none'; return; }
+  const descs = descriptions ?? {};
+  statusList.innerHTML = parts.map(([uid, p]) => {
+    const submitted = !!descs[uid]?.text?.trim();
+    return `<div class="chip">
+      <div class="dot ${submitted ? 'done' : 'waiting'}"></div>
+      ${escHtml(p.name)}${submitted ? ' ✓' : ' …'}
+    </div>`;
+  }).join('');
+  statusDiv.style.display = '';
+}
+
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   if (!initFirebase()) {
@@ -1225,7 +1471,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!session) { clearSession(); return; }
       state.movies = normaliseMoviesFromFirebase(session.movies);
       if (session.status === 'lobby') {
-        showLobby(savedCode, savedRole === 'host');
+        showLobby(savedCode, savedRole === 'host', session.aiMode ?? false);
         // showLobby already calls fbListen(onSessionUpdate)
         return;
       }
@@ -1310,10 +1556,10 @@ function wireAllHandlers() {
     state.userName = name;
     setBtn('btn-join-confirm', true);
     try {
-      await joinSession(state.sessionCode);
+      const session = await joinSession(state.sessionCode);
       sessionStorage.setItem('pf_session', state.sessionCode);
       sessionStorage.setItem('pf_role', 'guest');
-      showLobby(state.sessionCode, false);
+      showLobby(state.sessionCode, false, session.aiMode ?? false);
     } catch (e) {
       toast(e.message, 'error');
     } finally {
@@ -1469,6 +1715,62 @@ function wireAllHandlers() {
   // btn-winner-play-again is wired to startNewRound above (results section);
   // the winner overlay shares the same handler.
   document.getElementById('btn-winner-leave').onclick = clearSession;
+
+  // ── AI Mode ──
+  // AI toggle (library screen)
+  document.getElementById('ai-toggle-row').onclick = () => {
+    state.aiMode = !state.aiMode;
+    const track = document.getElementById('ai-toggle-track');
+    const sec   = document.getElementById('ai-config-section');
+    track.classList.toggle('on', state.aiMode);
+    sec.style.display = state.aiMode ? 'flex' : 'none';
+    if (state.aiMode) {
+      sec.style.flexDirection = 'column';
+      const saved = getLmEndpoint();
+      if (saved) document.getElementById('lm-endpoint-input').value = saved;
+    }
+  };
+
+  // Test LM Studio connection
+  document.getElementById('btn-test-lm').onclick = async () => {
+    const url = document.getElementById('lm-endpoint-input').value.trim();
+    if (!url) { toast('Enter an LM Studio URL first', 'error'); return; }
+    setLmEndpoint(url);
+    const result = document.getElementById('lm-test-result');
+    result.style.display = 'block';
+    result.className     = '';
+    result.textContent   = '🔌 Testing…';
+    try {
+      const { models } = await testLmConnection(url);
+      const modelId = models[0]?.id ?? 'No model loaded';
+      result.className   = 'ok';
+      result.textContent = `✅ Connected · ${modelId}`;
+    } catch (e) {
+      result.className   = 'error';
+      result.textContent = `❌ ${e.message}`;
+    }
+  };
+
+  // Submit AI description (participants in lobby)
+  document.getElementById('btn-submit-ai-desc').onclick = async () => {
+    const text = document.getElementById('ai-desc-input').value.trim();
+    if (!text) { toast('Describe what you want to watch first', 'error'); return; }
+    const btn = document.getElementById('btn-submit-ai-desc');
+    btn.disabled = true;
+    try {
+      await fbSet(
+        `sessions/${state.sessionCode}/aiDescriptions/${state.userId}`,
+        { name: state.userName, text }
+      );
+      document.getElementById('ai-desc-submitted-notice').style.display = 'flex';
+    } catch (e) {
+      toast('Failed to save preferences — check your connection.', 'error');
+      btn.disabled = false;
+    }
+  };
+
+  // Host "Find Movies with AI" button
+  document.getElementById('btn-ai-find-movies').onclick = runAiPick;
 }
 
 function wireLibraryForm(servers, initialLibs) {
@@ -1518,31 +1820,40 @@ function wireLibraryForm(servers, initialLibs) {
 
   // ── Create session ──
   document.getElementById('btn-create-session').onclick = async () => {
-    const sectionKey     = document.getElementById('select-library').value;
-    const genreFastKey   = document.getElementById('select-genre').value || null;
+    const sectionKey   = document.getElementById('select-library').value;
+    const genreFastKey = document.getElementById('select-genre').value || null;
+
+    // Validate AI mode before locking down the UI
+    if (state.aiMode) {
+      const url = document.getElementById('lm-endpoint-input').value.trim();
+      if (!url) { toast('Enter your LM Studio URL to use AI Mode', 'error'); return; }
+      setLmEndpoint(url);
+    }
 
     setBtn('btn-create-session', true);
     try {
-      const raw        = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
-      const byYear     = applyYearFilter(raw);
-      const byDur      = applyDurationFilter(byYear, getMaxDurationMs());
-      const filtered   = applyExcludeGenreFilter(byDur);
+      const raw      = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
+      const byYear   = applyYearFilter(raw);
+      const byDur    = applyDurationFilter(byYear, getMaxDurationMs());
+      const filtered = applyExcludeGenreFilter(byDur);
       if (!filtered.length) throw new Error('No movies found for that selection. Try adjusting the filters.');
 
-      const picked     = pickMovies(filtered, MOVIES_COUNT);
-      // Fetch TMDB poster URLs in parallel for all picked movies.
-      // Falls back to Plex relay URL per-movie if TMDB is unconfigured or lookup fails.
+      // In AI mode we create the session with a placeholder pool (the AI will
+      // replace it when the host clicks "Find Movies with AI"). We still need
+      // some movies in Firebase so guests can join — use a random sample.
+      const picked      = pickMovies(filtered, MOVIES_COUNT);
       const tmdbPosters = await fetchTmdbPosters(picked);
-      state.movies  = picked.map(m => formatMovie(
+      state.movies = picked.map(m => formatMovie(
         m, state.plexImageUri, state.plexToken, tmdbPosters[String(m.ratingKey)] ?? null
       ));
 
-      const code    = await createSession(state.movies);
+      const code = await createSession(state.movies, state.aiMode);
       state.sessionCode = code;
 
-      showLobby(code, true);
+      showLobby(code, true, state.aiMode);
+      const modeLabel = state.aiMode ? 'AI Mode · ' : '';
       document.getElementById('lobby-movie-info').textContent =
-        `${state.movies.length} movies · ${state.plexLibrary?.title ?? 'your library'}`;
+        `${modeLabel}${state.movies.length} movies · ${state.plexLibrary?.title ?? 'your library'}`;
     } catch (e) {
       if (e.message === 'PLEX_AUTH_EXPIRED') {
         toast('Plex sign-in expired — please reconnect.', 'error');
@@ -1654,6 +1965,7 @@ function clearSession() {
   state.plexLibrary    = null;
   state.userName       = null;
   state.role           = null;
+  state.aiMode         = false;
   state.excludedGenres.clear();
   document.querySelectorAll('#exclude-genre-chips .genre-chip.excluded')
     .forEach(chip => chip.classList.remove('excluded'));
