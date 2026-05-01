@@ -424,11 +424,16 @@
     .ai-lobby-card textarea.input {
       resize: vertical; min-height: 80px; font-size: 14px; line-height: 1.55;
     }
-    #lm-test-result {
+    #lm-test-result, #radarr-test-result {
       font-size: 12px; padding: 10px 14px; border-radius: 10px; line-height: 1.5;
     }
-    #lm-test-result.ok    { background: rgba(74,222,128,.1);   color: var(--green); }
-    #lm-test-result.error { background: rgba(248,113,113,.12); color: var(--red);   }
+    #lm-test-result.ok, #radarr-test-result.ok       { background: rgba(74,222,128,.1);   color: var(--green); }
+    #lm-test-result.error, #radarr-test-result.error  { background: rgba(248,113,113,.12); color: var(--red);   }
+    .not-in-library-chip {
+      background: rgba(6,182,212,.12); border: 1px solid rgba(6,182,212,.25);
+      color: var(--teal); border-radius: 6px; padding: 1px 6px;
+      font-size: 11px; font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -629,16 +634,32 @@
             </div>
           </div>
           <div class="ai-config-card" id="ai-config-section" style="display:none">
+            <div style="font-size:12px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">LM Studio</div>
             <div class="input-group" style="margin-bottom:0">
-              <label>LM Studio URL</label>
+              <label>URL</label>
               <input class="input" id="lm-endpoint-input" type="url" placeholder="http://192.168.x.x:1234" autocomplete="off" style="font-size:14px">
             </div>
-            <button class="btn btn-secondary" id="btn-test-lm" style="padding:10px 16px">🔌 Test Connection</button>
+            <button class="btn btn-secondary" id="btn-test-lm" style="padding:10px 16px">🔌 Test LM Studio</button>
             <div id="lm-test-result" style="display:none"></div>
-            <p style="font-size:11px;color:var(--muted);line-height:1.65;margin-top:2px">
+            <p style="font-size:11px;color:var(--muted);line-height:1.65">
               LM Studio must have <strong style="color:var(--subtle)">CORS enabled</strong> (Settings → Server) and a model loaded.
-              Your URL stays on this device — never shared with participants.
+              URL stays on this device — never shared.
             </p>
+
+            <div class="divider" style="margin:4px 0"></div>
+            <div style="font-size:12px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">
+              Radarr <span style="font-size:10px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(optional — download AI-suggested films)</span>
+            </div>
+            <div class="input-group" style="margin-bottom:8px">
+              <label>Radarr URL</label>
+              <input class="input" id="radarr-url-input" type="url" placeholder="http://192.168.x.x:7878" style="font-size:14px">
+            </div>
+            <div class="input-group" style="margin-bottom:0">
+              <label>API Key</label>
+              <input class="input" id="radarr-key-input" type="password" placeholder="Settings → General → API Key" style="font-size:14px">
+            </div>
+            <button class="btn btn-secondary" id="btn-test-radarr" style="padding:10px 16px">📡 Test Radarr</button>
+            <div id="radarr-test-result" style="display:none"></div>
           </div>
 
           <button class="btn btn-primary" id="btn-create-session">🚀 Create Session</button>
@@ -790,6 +811,7 @@
       <div  id="winner-poster-ph" class="winner-poster-ph"  style="display:none">🎬</div>
       <div  id="winner-title"     class="winner-movie-title"></div>
       <div  id="winner-meta"      class="text-muted"></div>
+      <button id="btn-winner-radarr" class="btn btn-secondary" style="display:none;max-width:280px;margin-top:8px">📥 Add to Radarr</button>
       <div class="gap-3 mt-3" style="width:100%;max-width:280px">
         <button id="btn-winner-play-again" class="btn btn-primary">🔄 Play Again</button>
         <button id="btn-winner-leave"      class="btn btn-ghost">Leave</button>

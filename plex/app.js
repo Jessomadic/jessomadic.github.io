@@ -348,6 +348,8 @@ function formatMovie(m, plexUri, token, tmdbUrl = null) {
   const plexPoster = m.thumb
     ? `${plexUri}${m.thumb}?X-Plex-Token=${token}&width=200&height=300`
     : null;
+  const tmdbGuid = (m.Guid ?? []).find(g => g.id?.startsWith('tmdb://'));
+  const tmdbId   = tmdbGuid ? parseInt(tmdbGuid.id.slice('tmdb://'.length), 10) : null;
   return {
     id:            String(m.ratingKey),
     title:         m.title ?? 'Unknown',
@@ -358,6 +360,8 @@ function formatMovie(m, plexUri, token, tmdbUrl = null) {
     duration:      m.duration ? `${Math.round(m.duration / 60000)} min` : '',
     genres:        (m.Genre ?? []).map(g => g.tag).slice(0, 3),
     poster:        tmdbUrl ?? plexPoster,
+    inLibrary:     true,
+    tmdbId,
   };
 }
 
@@ -575,6 +579,9 @@ function buildCard(movie) {
     : '';
   const metaParts = [movie.year, movie.duration, movie.rating ? `⭐ ${movie.rating}` : null].filter(Boolean);
   const badge = movie.contentRating ? `<span class="badge">${escHtml(movie.contentRating)}</span>` : '';
+  const notInLib = movie.inLibrary === false
+    ? `<span class="not-in-library-chip">📥 Not in library</span>`
+    : '';
   const genreList = movie.genres ?? [];
   const genres = genreList.length
     ? `<div class="genre-tags">${genreList.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>`
@@ -600,7 +607,7 @@ function buildCard(movie) {
         <div class="card-title">${escHtml(movie.title)}</div>
         <div class="card-meta">
           ${metaParts.map(p => `<span>${escHtml(String(p))}</span>`).join('<span>·</span>')}
-          ${badge}
+          ${badge}${notInLib}
         </div>
       </div>
       ${movie.summary ? `<p class="card-summary">${escHtml(movie.summary)}</p>` : ''}
@@ -770,7 +777,10 @@ function showResults(session) {
     emoji.textContent    = '🎬';
     headline.textContent = 'You matched a movie!';
     sub.textContent      = `${pCount} ${pCount === 1 ? 'person' : 'people'} · majority agreed`;
-    list.innerHTML       = `
+    const notInLib = movie.inLibrary === false
+      ? `<span class="not-in-library-chip" style="margin-top:4px;display:inline-block">📥 Not in library</span>`
+      : '';
+    list.innerHTML = `
       <div class="result-item">
         ${movie.poster
           ? `<img class="result-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="result-poster-placeholder" style="display:none">🎬</div>`
@@ -779,9 +789,35 @@ function showResults(session) {
           <div style="font-weight:700;font-size:16px;margin-bottom:2px">${escHtml(movie.title)}</div>
           <div class="text-muted" style="font-size:13px">${[movie.year, movie.duration].filter(Boolean).join(' · ')}</div>
           ${(movie.genres ?? []).length ? `<div class="genre-tags" style="margin-top:4px">${movie.genres.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>` : ''}
+          ${notInLib}
         </div>
         <div class="match-pct">${yesVotes}/${pCount}</div>
       </div>`;
+    // Radarr download button for non-library winner
+    if (movie.inLibrary === false && movie.tmdbId) {
+      const { url, key } = getRadarrConfig();
+      if (url && key) {
+        const radarrWrap = document.createElement('div');
+        radarrWrap.className = 'mt-3';
+        const radarrBtn = document.createElement('button');
+        radarrBtn.className   = 'btn btn-secondary';
+        radarrBtn.textContent = '📥 Add to Radarr';
+        radarrBtn.onclick = async () => {
+          radarrBtn.disabled  = true;
+          radarrBtn.innerHTML = '<span class="spinner-sm"></span>';
+          try {
+            const res = await addToRadarr(movie);
+            radarrBtn.textContent = res.alreadyExists ? '✅ Already in Radarr' : '✅ Added to Radarr!';
+          } catch (e) {
+            toast(e.message, 'error');
+            radarrBtn.disabled  = false;
+            radarrBtn.textContent = '📥 Add to Radarr';
+          }
+        };
+        radarrWrap.appendChild(radarrBtn);
+        list.appendChild(radarrWrap);
+      }
+    }
   }
   showScreen('screen-results');
 }
@@ -1077,14 +1113,43 @@ function showWheelWinner(movie) {
       posterImg.style.display = 'none';
       posterPh.style.display  = 'flex';
     };
-    posterImg.src           = movie.poster; // set src AFTER onerror to avoid missing the event
+    posterImg.src           = movie.poster;
     posterImg.style.display = 'block';
     posterPh.style.display  = 'none';
   } else {
     posterImg.style.display = 'none';
     posterPh.style.display  = 'flex';
   }
+
+  // Show Radarr download button if movie isn't in the library and Radarr is configured
+  wireWinnerRadarrBtn(movie);
+
   overlay.style.display = 'flex';
+}
+
+function wireWinnerRadarrBtn(movie) {
+  const btn = document.getElementById('btn-winner-radarr');
+  if (!btn) return;
+  const { url, key } = getRadarrConfig();
+  if (movie.inLibrary === false && movie.tmdbId && url && key) {
+    btn.style.display = '';
+    btn.disabled      = false;
+    btn.textContent   = '📥 Add to Radarr';
+    btn.onclick = async () => {
+      btn.disabled  = true;
+      btn.innerHTML = '<span class="spinner-sm"></span>';
+      try {
+        const res = await addToRadarr(movie);
+        btn.textContent = res.alreadyExists ? '✅ Already in Radarr' : '✅ Added to Radarr!';
+      } catch (e) {
+        toast(e.message, 'error');
+        btn.disabled  = false;
+        btn.textContent = '📥 Add to Radarr';
+      }
+    };
+  } else {
+    btn.style.display = 'none';
+  }
 }
 
 // ── Library setup ─────────────────────────────────────────────
@@ -1228,6 +1293,114 @@ function setLmEndpoint(url) {
   else sessionStorage.removeItem('pf_lm_endpoint');
 }
 
+// ── Radarr integration ────────────────────────────────────────
+function getRadarrConfig() {
+  return {
+    url: sessionStorage.getItem('pf_radarr_url') ?? '',
+    key: sessionStorage.getItem('pf_radarr_key') ?? '',
+  };
+}
+function setRadarrConfig(url, key) {
+  if (url) sessionStorage.setItem('pf_radarr_url', url.trim().replace(/\/$/, ''));
+  else     sessionStorage.removeItem('pf_radarr_url');
+  if (key) sessionStorage.setItem('pf_radarr_key', key.trim());
+  else     sessionStorage.removeItem('pf_radarr_key');
+}
+
+async function testRadarrConnection(url, key) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch(`${url}/api/v3/system/status`, {
+      headers: { 'X-Api-Key': key }, signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (r.status === 401) throw new Error('Invalid API key');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    return { ok: true, version: d.version };
+  } catch (e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('Connection timed out');
+    throw new Error(`Cannot reach Radarr: ${e.message}`);
+  }
+}
+
+async function addToRadarr(movie) {
+  const { url, key } = getRadarrConfig();
+  if (!url || !key) throw new Error('Radarr not configured — enter URL and API key in the library setup.');
+  if (!movie.tmdbId) throw new Error('No TMDB ID for this movie — cannot add to Radarr.');
+  const headers = { 'X-Api-Key': key, 'Content-Type': 'application/json' };
+  const [rfRes, qpRes] = await Promise.all([
+    fetch(`${url}/api/v3/rootfolder`,    { headers }),
+    fetch(`${url}/api/v3/qualityprofile`, { headers }),
+  ]);
+  const rootFolders = rfRes.ok ? await rfRes.json() : [];
+  const profiles    = qpRes.ok ? await qpRes.json() : [];
+  const rootPath    = rootFolders[0]?.path;
+  if (!rootPath) throw new Error('No root folders found in Radarr — check your Radarr setup.');
+  const profileId = profiles[0]?.id ?? 1;
+  const addRes = await fetch(`${url}/api/v3/movie`, {
+    method: 'POST', headers,
+    body: JSON.stringify({
+      tmdbId:           movie.tmdbId,
+      title:            movie.title,
+      qualityProfileId: profileId,
+      rootFolderPath:   rootPath,
+      monitored:        true,
+      addOptions:       { searchForMovie: true },
+    }),
+  });
+  if (addRes.status === 400) {
+    const errBody = await addRes.json().catch(() => []);
+    const msgs    = Array.isArray(errBody) ? errBody.map(e => e.errorMessage) : [errBody.message ?? ''];
+    if (msgs.some(m => /already/i.test(m))) return { alreadyExists: true };
+    throw new Error(msgs.join(', ') || `Radarr error ${addRes.status}`);
+  }
+  if (!addRes.ok) throw new Error(`Radarr returned HTTP ${addRes.status}`);
+  return { added: true };
+}
+
+// TMDB movie search — fetches metadata for AI-suggested non-library films
+async function tmdbSearchMovie(title, year) {
+  const apiKey = window.tmdbApiKey;
+  if (!apiKey || apiKey === 'YOUR_TMDB_API_KEY') return null;
+  try {
+    const yearParam = year ? `&year=${year}` : '';
+    const r = await fetch(
+      `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(title)}${yearParam}&language=en-US&page=1`
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    const m = d.results?.[0];
+    if (!m) return null;
+    return {
+      tmdbId:  m.id,
+      title:   m.title,
+      year:    m.release_date?.slice(0, 4) ?? String(year ?? ''),
+      summary: (m.overview ?? '').slice(0, 220),
+      rating:  m.vote_average ? parseFloat(m.vote_average).toFixed(1) : null,
+      poster:  m.poster_path ? `${TMDB_IMAGE_BASE}${m.poster_path}` : null,
+    };
+  } catch { return null; }
+}
+
+function formatSuggestedMovie(tmdbData) {
+  return {
+    id:            `tmdb:${tmdbData.tmdbId}`,
+    title:         tmdbData.title,
+    year:          tmdbData.year,
+    summary:       tmdbData.summary,
+    rating:        tmdbData.rating,
+    contentRating: '',
+    duration:      '',
+    genres:        [],
+    poster:        tmdbData.poster,
+    inLibrary:     false,
+    tmdbId:        tmdbData.tmdbId,
+  };
+}
+
 async function testLmConnection(endpoint) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 6000);
@@ -1262,20 +1435,23 @@ function buildAiSystemPrompt() {
 
 You will receive:
 1. Each participant's description of what mood, tone, or type of film they want tonight
-2. A JSON catalog of available movies: id, t=title, y=year, g=genres, s=summary, r=rating, dur=duration in minutes
+2. A JSON catalog of movies they already own: id, t=title, y=year, g=genres, s=summary, r=rating, dur=duration in minutes
 
-Your task: select 20–30 movies from the catalog that best satisfy the group's collective preferences.
+Your task has TWO parts:
 
-Guidelines:
-- Balance every participant's preferences — find films where tastes intersect
-- Favour variety: mix genres, tones, and eras when people want different things
-- Quality matters: 20 great matches beats 30 mediocre ones
-- Account for mood (fun, chill, intense, scary), tone (light, dark, quirky), and explicit requests
-- ONLY return IDs from the provided catalog — never invent or assume
-- If participants mention specific films they love, find thematically similar ones in the catalog
+PART 1 — "selected": Pick 20–30 movies from the catalog that best match everyone's preferences.
+- Use the exact "id" field from the catalog
+- Balance every participant's mood and tone preferences
+- Favour variety: mix genres, eras, energy levels when tastes differ
 
-CRITICAL: Respond ONLY with a single valid JSON object — no markdown, no code fences, no extra text:
-{"selected":["id1","id2",...],"reason":"One sentence explaining the curation"}`;
+PART 2 — "suggestions": Recommend up to 8 real movies NOT in the catalog that the group would love.
+- Draw from your training knowledge of real films
+- Match the same mood/vibe the participants described
+- Be accurate — only suggest real films with the correct title and year
+- These will be offered as Radarr downloads so accuracy matters
+
+CRITICAL: Respond ONLY with valid JSON, no markdown, no code fences, no extra text:
+{"selected":["id1","id2",...],"suggestions":[{"title":"Movie Name","year":2019},{"title":"Another Film","year":2015}],"reason":"One sentence"}`;
 }
 
 function buildAiUserPrompt(catalog, descriptions) {
@@ -1284,7 +1460,7 @@ function buildAiUserPrompt(catalog, descriptions) {
     .map(d => `${d.name}: "${d.text.trim()}"`)
     .join('\n');
 
-  return `WHAT EVERYONE WANTS TONIGHT:\n${prefs}\n\nAVAILABLE MOVIES:\n${JSON.stringify(catalog)}`;
+  return `WHAT EVERYONE WANTS TONIGHT:\n${prefs}\n\nMOVIES ALREADY IN PLEX:\n${JSON.stringify(catalog)}`;
 }
 
 async function callLmStudio(endpoint, systemPrompt, userPrompt) {
@@ -1321,12 +1497,12 @@ async function callLmStudio(endpoint, systemPrompt, userPrompt) {
 }
 
 function parseLmResponse(text) {
-  // Strip markdown code fences if the model wraps its output
   let t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
   const match = t.match(/\{[\s\S]*\}/);
   if (!match) throw new Error('AI response did not contain JSON. Got: ' + t.slice(0, 300));
   const parsed = JSON.parse(match[0]);
   if (!Array.isArray(parsed.selected)) throw new Error('AI response missing "selected" array. Got: ' + t.slice(0, 300));
+  if (!Array.isArray(parsed.suggestions)) parsed.suggestions = [];
   return parsed;
 }
 
@@ -1356,15 +1532,11 @@ async function runAiPick() {
   try {
     setStatus('🎬 Fetching your Plex library…');
 
-    // Fetch full library and apply year/duration filters but NOT genre filter
-    // so the AI has the widest reasonable pool to choose from.
+    // Fetch full library; apply year/duration filters but NOT genre —
+    // the AI should see everything to make the best recommendations.
     const rawAll = await plexGetMovies(state.plexServerUri, state.plexLibrary.key, null, state.plexToken);
     const byYear = applyYearFilter(rawAll);
-    const byDur  = applyDurationFilter(byYear, getMaxDurationMs());
-
-    // Cap at 400 movies to stay within typical local-model context limits.
-    // Randomise the crop so repeated runs surface different films.
-    const pool = byDur.length > 400 ? shuffle(byDur).slice(0, 400) : byDur;
+    const pool   = applyDurationFilter(byYear, getMaxDurationMs());
 
     if (!pool.length) throw new Error('No movies available with current filters. Adjust year/duration and try again.');
 
@@ -1376,30 +1548,44 @@ async function runAiPick() {
     const descCount    = Object.values(descriptions).filter(d => d?.text?.trim()).length;
     if (descCount === 0) throw new Error('Nobody has submitted their preferences yet! Ask participants to describe what they want to watch.');
 
-    setStatus(`🧠 Asking AI to pick movies based on ${descCount} preference${descCount !== 1 ? 's' : ''}…`);
+    setStatus(`🧠 Asking AI to pick from ${pool.length} movies based on ${descCount} preference${descCount !== 1 ? 's' : ''}…`);
 
-    const raw      = await callLmStudio(endpoint, buildAiSystemPrompt(), buildAiUserPrompt(catalog, descriptions));
-    const parsed   = parseLmResponse(raw);
+    const raw    = await callLmStudio(endpoint, buildAiSystemPrompt(), buildAiUserPrompt(catalog, descriptions));
+    const parsed = parseLmResponse(raw);
     const selected = new Set(parsed.selected.map(String));
 
-    setStatus('✨ AI picked your movies! Loading posters…');
+    setStatus('✨ AI picked! Fetching metadata and posters…');
 
     // Map selected IDs back to raw Plex objects
-    let finalRaw = pool.filter(m => selected.has(String(m.ratingKey)));
+    let pickedRaw = pool.filter(m => selected.has(String(m.ratingKey)));
 
-    // Safety net: if AI returned too few matches, pad with random picks
-    if (finalRaw.length < 10) {
+    // Safety net: pad with randoms if AI returned too few library picks
+    if (pickedRaw.length < 5) {
       const extras = shuffle(pool.filter(m => !selected.has(String(m.ratingKey))));
-      finalRaw = [...finalRaw, ...extras].slice(0, MOVIES_COUNT);
-      toast(`AI found ${finalRaw.length} matches — padded to ${MOVIES_COUNT} with randoms.`, 'info');
+      pickedRaw = [...pickedRaw, ...extras].slice(0, MOVIES_COUNT);
+      toast(`AI matched ${pickedRaw.length} library films — padded to fill the deck.`, 'info');
     } else {
-      finalRaw = finalRaw.slice(0, MOVIES_COUNT);
+      pickedRaw = pickedRaw.slice(0, MOVIES_COUNT);
     }
 
-    const tmdbPosters = await fetchTmdbPosters(finalRaw);
-    const newMovies   = finalRaw.map(m => formatMovie(
+    const tmdbPosters = await fetchTmdbPosters(pickedRaw);
+    const libraryMovies = pickedRaw.map(m => formatMovie(
       m, state.plexImageUri, state.plexToken, tmdbPosters[String(m.ratingKey)] ?? null
     ));
+
+    // Fetch TMDB data for AI-suggested non-library movies
+    const existingTitles = new Set(pool.map(m => (m.title ?? '').toLowerCase()));
+    const suggestionsRaw = (parsed.suggestions ?? []).slice(0, 8);
+    const suggestionsResolved = await Promise.allSettled(
+      suggestionsRaw
+        .filter(s => s?.title && !existingTitles.has((s.title ?? '').toLowerCase()))
+        .map(s => tmdbSearchMovie(s.title, s.year))
+    );
+    const suggestedMovies = suggestionsResolved
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .map(r => formatSuggestedMovie(r.value));
+
+    const newMovies = [...libraryMovies, ...suggestedMovies];
 
     if (parsed.reason) toast(`AI: ${parsed.reason}`, 'info');
 
@@ -1726,8 +1912,11 @@ function wireAllHandlers() {
     sec.style.display = state.aiMode ? 'flex' : 'none';
     if (state.aiMode) {
       sec.style.flexDirection = 'column';
-      const saved = getLmEndpoint();
-      if (saved) document.getElementById('lm-endpoint-input').value = saved;
+      const savedLm     = getLmEndpoint();
+      const savedRadarr = getRadarrConfig();
+      if (savedLm)           document.getElementById('lm-endpoint-input').value  = savedLm;
+      if (savedRadarr.url)   document.getElementById('radarr-url-input').value   = savedRadarr.url;
+      if (savedRadarr.key)   document.getElementById('radarr-key-input').value   = savedRadarr.key;
     }
   };
 
@@ -1745,6 +1934,26 @@ function wireAllHandlers() {
       const modelId = models[0]?.id ?? 'No model loaded';
       result.className   = 'ok';
       result.textContent = `✅ Connected · ${modelId}`;
+    } catch (e) {
+      result.className   = 'error';
+      result.textContent = `❌ ${e.message}`;
+    }
+  };
+
+  // Test Radarr connection
+  document.getElementById('btn-test-radarr').onclick = async () => {
+    const url = document.getElementById('radarr-url-input').value.trim();
+    const key = document.getElementById('radarr-key-input').value.trim();
+    if (!url || !key) { toast('Enter Radarr URL and API key first', 'error'); return; }
+    setRadarrConfig(url, key);
+    const result = document.getElementById('radarr-test-result');
+    result.style.display = 'block';
+    result.className     = '';
+    result.textContent   = '📡 Testing…';
+    try {
+      const { version } = await testRadarrConnection(url, key);
+      result.className   = 'ok';
+      result.textContent = `✅ Connected · Radarr v${version}`;
     } catch (e) {
       result.className   = 'error';
       result.textContent = `❌ ${e.message}`;
@@ -1825,9 +2034,13 @@ function wireLibraryForm(servers, initialLibs) {
 
     // Validate AI mode before locking down the UI
     if (state.aiMode) {
-      const url = document.getElementById('lm-endpoint-input').value.trim();
-      if (!url) { toast('Enter your LM Studio URL to use AI Mode', 'error'); return; }
-      setLmEndpoint(url);
+      const lmUrl     = document.getElementById('lm-endpoint-input').value.trim();
+      if (!lmUrl) { toast('Enter your LM Studio URL to use AI Mode', 'error'); return; }
+      setLmEndpoint(lmUrl);
+      // Save Radarr config if provided (optional)
+      const radarrUrl = document.getElementById('radarr-url-input').value.trim();
+      const radarrKey = document.getElementById('radarr-key-input').value.trim();
+      if (radarrUrl && radarrKey) setRadarrConfig(radarrUrl, radarrKey);
     }
 
     setBtn('btn-create-session', true);
