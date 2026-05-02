@@ -22,9 +22,14 @@ function splitBaseUrl(baseUrl, fallbackPort) {
 }
 
 function buildUrl(hostId, portId, fallbackPort) {
-  const host = $(hostId).value.trim() || '127.0.0.1';
+  const rawHost = $(hostId).value.trim() || '127.0.0.1';
   const port = $(portId).value.trim() || String(fallbackPort);
-  return `http://${host}:${port}`;
+  if (/^https?:\/\//i.test(rawHost)) {
+    const url = new URL(rawHost);
+    url.port = port;
+    return url.toString().replace(/\/+$/, '');
+  }
+  return `http://${rawHost.replace(/\/+$/, '')}:${port}`;
 }
 
 async function api(path, options = {}) {

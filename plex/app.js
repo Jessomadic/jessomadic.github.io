@@ -1759,10 +1759,11 @@ async function runAiPickHardened() {
     await setStatus('AI picked. Fetching metadata and posters...');
     let pickedRaw = pool.filter(m => selected.has(String(m.ratingKey)));
 
+    const aiMatchedCount = pickedRaw.length;
     if (pickedRaw.length < 5) {
       const extras = shuffle(pool.filter(m => !selected.has(String(m.ratingKey))));
       pickedRaw = [...pickedRaw, ...extras].slice(0, MOVIES_COUNT);
-      toast(`AI matched ${pickedRaw.length} library films - padded to fill the deck.`, 'info');
+      toast(`AI matched ${aiMatchedCount} library film${aiMatchedCount !== 1 ? 's' : ''} - padded to fill the deck.`, 'info');
     } else {
       pickedRaw = pickedRaw.slice(0, MOVIES_COUNT);
     }
@@ -1774,14 +1775,28 @@ async function runAiPickHardened() {
 
     const existingTitles = new Set(pool.map(m => (m.title ?? '').toLowerCase()));
     const existingTmdbIds = new Set(pool.map(rawTmdbId).filter(id => id !== null));
-    const suggestionsRaw = (parsed.suggestions ?? []).slice(0, 8);
+    const suggestionsSeen = new Set();
+    const suggestionsRaw = (parsed.suggestions ?? [])
+      .filter(s => {
+        const key = `${String(s?.title || '').trim().toLowerCase()}|${String(s?.year || '').trim()}`;
+        if (!s?.title || suggestionsSeen.has(key)) return false;
+        suggestionsSeen.add(key);
+        return true;
+      })
+      .slice(0, 8);
     const suggestionsResolved = await Promise.allSettled(
       suggestionsRaw
-        .filter(s => s?.title && !existingTitles.has((s.title ?? '').toLowerCase()))
+        .filter(s => !existingTitles.has((s.title ?? '').trim().toLowerCase()))
         .map(s => tmdbSearchMovie(s.title, s.year))
     );
+    const suggestedTmdbIds = new Set();
     const suggestedMovies = suggestionsResolved
       .filter(r => r.status === 'fulfilled' && r.value && !existingTmdbIds.has(r.value.tmdbId))
+      .filter(r => {
+        if (suggestedTmdbIds.has(r.value.tmdbId)) return false;
+        suggestedTmdbIds.add(r.value.tmdbId);
+        return true;
+      })
       .map(r => formatSuggestedMovie(r.value));
 
     const newMovies = [...libraryMovies, ...suggestedMovies];

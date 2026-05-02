@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.1';
+const VERSION = '0.1.2';
 const DEFAULT_PORT = 8765;
 const DEFAULT_HOST = '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -29,7 +29,9 @@ const ALLOWED_ORIGINS = new Set([
 const FEATURES = {
   lmStudioApiKey: true,
   lmStudioModelEndpoints: ['/v1/models', '/api/v1/models', '/api/v0/models'],
+  radarrSavedApiKey: true,
   radarrSetup: true,
+  setupUrlParsing: true,
 };
 
 function ensureDataDir() {
@@ -370,14 +372,15 @@ async function route(req, res) {
     }
     if (req.method === 'POST' && pathname === '/api/radarr/test') {
       const body = await readJson(req);
-      const result = await testRadarr(body.baseUrl, body.apiKey);
+      const apiKey = body.apiKey ? String(body.apiKey).trim() : config.radarr.apiKey;
+      const result = await testRadarr(body.baseUrl, apiKey);
       sendJson(req, res, 200, { ok: true, ...result });
       return;
     }
     if (req.method === 'POST' && pathname === '/api/radarr/save') {
       const body = await readJson(req);
       const baseUrl = normalizeBaseUrl(body.baseUrl, 7878);
-      const apiKey = String(body.apiKey || '').trim();
+      const apiKey = body.apiKey ? String(body.apiKey).trim() : config.radarr.apiKey;
       if (!baseUrl) throw new Error('Radarr URL is required');
       if (!apiKey) throw new Error('Radarr API key is required');
       config.radarr.baseUrl = baseUrl;
