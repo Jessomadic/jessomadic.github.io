@@ -1558,7 +1558,7 @@ async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setS
 
     const parsed = parseLmResponse(raw);
     parsed.selected.slice(0, 14).forEach(id => selectedIds.add(String(id)));
-    (parsed.suggestions ?? []).slice(0, 2).forEach(s => suggestions.push(s));
+    (parsed.suggestions ?? []).slice(0, 8).forEach(s => suggestions.push(s));
     if (parsed.reason) reasons.push(parsed.reason);
   }
 
