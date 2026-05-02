@@ -424,11 +424,21 @@
     .ai-lobby-card textarea.input {
       resize: vertical; min-height: 80px; font-size: 14px; line-height: 1.55;
     }
-    #lm-test-result, #radarr-test-result {
+    .ai-mode-select {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .ai-mode-select button {
+      padding: 9px 10px; border-radius: 8px; border: 1px solid rgba(168,85,247,.18);
+      background: var(--card2); color: var(--muted); font-size: 13px; font-weight: 700;
+    }
+    .ai-mode-select button.active {
+      background: rgba(168,85,247,.18); color: var(--white); border-color: rgba(168,85,247,.45);
+    }
+    #bridge-test-result, #lm-test-result, #radarr-test-result {
       font-size: 12px; padding: 10px 14px; border-radius: 10px; line-height: 1.5;
     }
-    #lm-test-result.ok, #radarr-test-result.ok       { background: rgba(74,222,128,.1);   color: var(--green); }
-    #lm-test-result.error, #radarr-test-result.error  { background: rgba(248,113,113,.12); color: var(--red);   }
+    #bridge-test-result.ok, #lm-test-result.ok, #radarr-test-result.ok       { background: rgba(74,222,128,.1);   color: var(--green); }
+    #bridge-test-result.error, #lm-test-result.error, #radarr-test-result.error  { background: rgba(248,113,113,.12); color: var(--red);   }
     .not-in-library-chip {
       background: rgba(6,182,212,.12); border: 1px solid rgba(6,182,212,.25);
       color: var(--teal); border-radius: 6px; padding: 1px 6px;
@@ -634,6 +644,23 @@
             </div>
           </button>
           <div class="ai-config-card" id="ai-config-section" style="display:none">
+            <div style="font-size:12px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Connection Mode</div>
+            <div class="ai-mode-select" role="group" aria-label="AI connection mode">
+              <button type="button" id="ai-mode-bridge-btn" class="active">Bridge</button>
+              <button type="button" id="ai-mode-direct-btn">Direct</button>
+            </div>
+            <div id="bridge-config-panel" style="display:flex;flex-direction:column;gap:10px">
+              <div class="input-group" style="margin-bottom:0">
+                <label>PickFlick Bridge URL</label>
+                <input class="input" id="bridge-url-input" type="url" placeholder="http://127.0.0.1:8765" autocomplete="off" style="font-size:14px">
+              </div>
+              <button class="btn btn-secondary" id="btn-test-bridge" style="padding:10px 16px">Test Bridge</button>
+              <div id="bridge-test-result" style="display:none"></div>
+              <p style="font-size:11px;color:var(--muted);line-height:1.65">
+                Recommended. Run PickFlick Bridge on the host Windows machine, then use its setup page to choose the LM Studio model and Radarr defaults.
+              </p>
+            </div>
+            <div id="direct-config-panel" style="display:none;flex-direction:column;gap:10px">
             <div style="font-size:12px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">LM Studio</div>
             <div class="input-group" style="margin-bottom:0">
               <label>URL</label>
@@ -666,6 +693,7 @@
             <p style="font-size:11px;color:var(--muted);line-height:1.65">
               Radarr is optional. From GitHub Pages, local Radarr URLs may require HTTPS, CORS, or a local proxy to work in your browser.
             </p>
+            </div>
           </div>
 
           <button class="btn btn-primary" id="btn-create-session">🚀 Create Session</button>

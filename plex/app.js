@@ -818,7 +818,7 @@ function showResults(session) {
     // Radarr download button for non-library winner
     if (movie.inLibrary === false && movie.tmdbId) {
       const { url, key } = getRadarrConfig();
-      if (url && key) {
+      if (isBridgeMode() || (url && key)) {
         const radarrWrap = document.createElement('div');
         radarrWrap.className = 'mt-3';
         const radarrBtn = document.createElement('button');
@@ -1153,7 +1153,7 @@ function wireWinnerRadarrBtn(movie) {
   const btn = document.getElementById('btn-winner-radarr');
   if (!btn) return;
   const { url, key } = getRadarrConfig();
-  if (movie.inLibrary === false && movie.tmdbId && url && key) {
+  if (movie.inLibrary === false && movie.tmdbId && (isBridgeMode() || (url && key))) {
     btn.style.display = '';
     btn.disabled      = false;
     btn.textContent   = '📥 Add to Radarr';
@@ -1312,12 +1312,14 @@ function getLmEndpoint() {
 }
 function setLmEndpoint(url) {
   if (url) {
-    const endpoint = url.trim().replace(/\/$/, '');
+    const endpoint = normalizeEndpoint(url);
     if (endpoint !== getLmEndpoint()) setLmModelId('');
     sessionStorage.setItem('pf_lm_endpoint', endpoint);
+    return endpoint;
   } else {
     sessionStorage.removeItem('pf_lm_endpoint');
     setLmModelId('');
+    return '';
   }
 }
 function getLmModelId() {
@@ -1326,6 +1328,60 @@ function getLmModelId() {
 function setLmModelId(modelId) {
   if (modelId) sessionStorage.setItem('pf_lm_model_id', modelId);
   else sessionStorage.removeItem('pf_lm_model_id');
+}
+function getAiConnectionMode() {
+  return sessionStorage.getItem('pf_ai_connection_mode') || 'bridge';
+}
+function setAiConnectionMode(mode) {
+  sessionStorage.setItem('pf_ai_connection_mode', mode === 'direct' ? 'direct' : 'bridge');
+}
+function isBridgeMode() {
+  return getAiConnectionMode() === 'bridge';
+}
+function getBridgeUrl() {
+  return sessionStorage.getItem('pf_bridge_url') || 'http://127.0.0.1:8765';
+}
+function setBridgeUrl(url) {
+  const normalized = normalizeEndpoint(url || 'http://127.0.0.1:8765');
+  sessionStorage.setItem('pf_bridge_url', normalized);
+  return normalized;
+}
+function normalizeEndpoint(url) {
+  const raw = String(url || '').trim().replace(/\/$/, '');
+  if (!raw) return '';
+  return /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+}
+
+async function bridgeFetch(path, options = {}) {
+  const baseUrl = getBridgeUrl();
+  if (!baseUrl) throw new Error('PickFlick Bridge URL is required.');
+  const r = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.ok === false) throw new Error(data.error || `Bridge returned HTTP ${r.status}`);
+  return data;
+}
+
+async function testBridgeConnection(url) {
+  const baseUrl = setBridgeUrl(url);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch(`${baseUrl}/health`, { signal: ctrl.signal });
+    clearTimeout(t);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.ok === false) throw new Error(data.error || `HTTP ${r.status}`);
+    return data;
+  } catch (e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('Timed out reaching PickFlick Bridge. Is it running?');
+    throw new Error(`Cannot reach PickFlick Bridge: ${e.message}`);
+  }
 }
 
 async function syncAiStatus(message, running = true) {
@@ -1377,6 +1433,17 @@ async function testRadarrConnection(url, key) {
 }
 
 async function addToRadarr(movie) {
+  if (isBridgeMode()) {
+    const data = await bridgeFetch('/radarr/add', {
+      method: 'POST',
+      body: JSON.stringify({
+        tmdbId: movie.tmdbId,
+        title: movie.title,
+        year: movie.year,
+      }),
+    });
+    return data.alreadyExists ? { alreadyExists: true } : { added: true };
+  }
   const { url, key } = getRadarrConfig();
   if (!url || !key) throw new Error('Radarr not configured — enter URL and API key in the library setup.');
   if (!movie.tmdbId) throw new Error('No TMDB ID for this movie — cannot add to Radarr.');
@@ -1514,6 +1581,13 @@ function buildAiUserPrompt(catalog, descriptions) {
 }
 
 async function callLmStudio(endpoint, modelId, systemPrompt, userPrompt) {
+  if (isBridgeMode()) {
+    const data = await bridgeFetch('/lm/chat', {
+      method: 'POST',
+      body: JSON.stringify({ modelId, systemPrompt, userPrompt }),
+    });
+    return data.content ?? '';
+  }
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 90000); // 90s for slow local models
   try {
@@ -1615,9 +1689,11 @@ async function runAiPickHardened() {
     toast('Waiting for the host to find movies...', 'info');
     return;
   }
-  const endpoint = getLmEndpoint();
+  const endpoint = isBridgeMode() ? getBridgeUrl() : getLmEndpoint();
   if (!endpoint) {
-    toast('LM Studio URL not set - configure it in the library setup.', 'error');
+    toast(isBridgeMode()
+      ? 'PickFlick Bridge URL not set - run the bridge setup first.'
+      : 'LM Studio URL not set - configure it in the library setup.', 'error');
     return;
   }
   if (!state.plexLibrary?.key || !state.plexServerUri || !state.plexToken) {
@@ -1652,15 +1728,21 @@ async function runAiPickHardened() {
       if (!ok) throw new Error('AI pick cancelled - waiting for more preferences.');
     }
 
-    await setStatus('Checking LM Studio model...');
+    await setStatus(isBridgeMode() ? 'Checking PickFlick Bridge...' : 'Checking LM Studio model...');
     let modelId = getLmModelId();
-    if (!modelId) {
+    if (isBridgeMode()) {
+      const health = await testBridgeConnection(endpoint);
+      modelId = health.config?.lmStudio?.modelId ?? '';
+      if (modelId) setLmModelId(modelId);
+    } else if (!modelId) {
       const { models } = await testLmConnection(endpoint);
       modelId = models[0]?.id ?? '';
       if (modelId) setLmModelId(modelId);
     }
     if (!modelId) {
-      throw new Error('No LM Studio model is loaded. Load a model, test the connection, and try again.');
+      throw new Error(isBridgeMode()
+        ? 'No LM Studio model is selected in PickFlick Bridge. Open bridge setup, test LM Studio, choose a model, and save.'
+        : 'No LM Studio model is loaded. Load a model, test the connection, and try again.');
     }
 
     await setStatus('Fetching your Plex library...');
@@ -1758,6 +1840,20 @@ function updateAiDescriptionStatus(participants, descriptions, aiStatus = null) 
       statusRow.style.display = 'none';
     }
   }
+}
+
+function updateAiConnectionUi() {
+  const mode = getAiConnectionMode();
+  const bridgeBtn = document.getElementById('ai-mode-bridge-btn');
+  const directBtn = document.getElementById('ai-mode-direct-btn');
+  const bridgePanel = document.getElementById('bridge-config-panel');
+  const directPanel = document.getElementById('direct-config-panel');
+  const bridgeInput = document.getElementById('bridge-url-input');
+  if (bridgeBtn) bridgeBtn.classList.toggle('active', mode === 'bridge');
+  if (directBtn) directBtn.classList.toggle('active', mode === 'direct');
+  if (bridgePanel) bridgePanel.style.display = mode === 'bridge' ? 'flex' : 'none';
+  if (directPanel) directPanel.style.display = mode === 'direct' ? 'flex' : 'none';
+  if (bridgeInput && !bridgeInput.value) bridgeInput.value = getBridgeUrl();
 }
 
 // ── Init ──────────────────────────────────────────────────────
@@ -2046,6 +2142,8 @@ function wireAllHandlers() {
     sec.style.display = state.aiMode ? 'flex' : 'none';
     if (state.aiMode) {
       sec.style.flexDirection = 'column';
+      updateAiConnectionUi();
+      document.getElementById('bridge-url-input').value = getBridgeUrl();
       const savedLm     = getLmEndpoint();
       const savedRadarr = getRadarrConfig();
       if (savedLm)           document.getElementById('lm-endpoint-input').value  = savedLm;
@@ -2054,17 +2152,48 @@ function wireAllHandlers() {
     }
   };
 
+  document.getElementById('ai-mode-bridge-btn').onclick = () => {
+    setAiConnectionMode('bridge');
+    updateAiConnectionUi();
+  };
+  document.getElementById('ai-mode-direct-btn').onclick = () => {
+    setAiConnectionMode('direct');
+    updateAiConnectionUi();
+  };
+
+  document.getElementById('btn-test-bridge').onclick = async () => {
+    const url = document.getElementById('bridge-url-input').value.trim();
+    if (!url) { toast('Enter your PickFlick Bridge URL first', 'error'); return; }
+    const result = document.getElementById('bridge-test-result');
+    result.style.display = 'block';
+    result.className = '';
+    result.textContent = 'Testing...';
+    try {
+      const health = await testBridgeConnection(url);
+      const lm = health.config?.lmStudio ?? {};
+      const radarr = health.config?.radarr ?? {};
+      if (lm.modelId) setLmModelId(lm.modelId);
+      result.className = lm.configured ? 'ok' : 'error';
+      result.textContent = lm.configured
+        ? `Bridge connected - LM model: ${lm.modelId}${radarr.configured ? ' - Radarr ready' : ' - Radarr not configured'}`
+        : 'Bridge connected, but LM Studio is not configured. Open the bridge setup page and choose a model.';
+    } catch (e) {
+      result.className = 'error';
+      result.textContent = e.message;
+    }
+  };
+
   // Test LM Studio connection
   document.getElementById('btn-test-lm').onclick = async () => {
     const url = document.getElementById('lm-endpoint-input').value.trim();
     if (!url) { toast('Enter an LM Studio URL first', 'error'); return; }
-    setLmEndpoint(url);
+    const endpoint = setLmEndpoint(url);
     const result = document.getElementById('lm-test-result');
     result.style.display = 'block';
     result.className     = '';
     result.textContent   = '🔌 Testing…';
     try {
-      const { models } = await testLmConnection(url);
+      const { models } = await testLmConnection(endpoint);
       const modelId = models[0]?.id ?? '';
       if (modelId) setLmModelId(modelId);
       else setLmModelId('');
@@ -2083,13 +2212,13 @@ function wireAllHandlers() {
     const url = document.getElementById('radarr-url-input').value.trim();
     const key = document.getElementById('radarr-key-input').value.trim();
     if (!url || !key) { toast('Enter Radarr URL and API key first', 'error'); return; }
-    setRadarrConfig(url, key);
+    setRadarrConfig(normalizeEndpoint(url), key);
     const result = document.getElementById('radarr-test-result');
     result.style.display = 'block';
     result.className     = '';
     result.textContent   = '📡 Testing…';
     try {
-      const { version } = await testRadarrConnection(url, key);
+      const { version } = await testRadarrConnection(normalizeEndpoint(url), key);
       result.className   = 'ok';
       result.textContent = `✅ Connected · Radarr v${version}`;
     } catch (e) {
@@ -2172,13 +2301,30 @@ function wireLibraryForm(servers, initialLibs) {
 
     // Validate AI mode before locking down the UI
     if (state.aiMode) {
-      const lmUrl     = document.getElementById('lm-endpoint-input').value.trim();
-      if (!lmUrl) { toast('Enter your LM Studio URL to use AI Mode', 'error'); return; }
-      setLmEndpoint(lmUrl);
-      // Save Radarr config if provided (optional)
-      const radarrUrl = document.getElementById('radarr-url-input').value.trim();
-      const radarrKey = document.getElementById('radarr-key-input').value.trim();
-      if (radarrUrl && radarrKey) setRadarrConfig(radarrUrl, radarrKey);
+      if (isBridgeMode()) {
+        const bridgeUrl = document.getElementById('bridge-url-input').value.trim();
+        if (!bridgeUrl) { toast('Enter your PickFlick Bridge URL to use AI Mode', 'error'); return; }
+        try {
+          const health = await testBridgeConnection(bridgeUrl);
+          const modelId = health.config?.lmStudio?.modelId ?? '';
+          if (!modelId) {
+            toast('Open PickFlick Bridge setup, test LM Studio, choose a model, and save it.', 'error');
+            return;
+          }
+          setLmModelId(modelId);
+        } catch (e) {
+          toast(e.message, 'error');
+          return;
+        }
+      } else {
+        const lmUrl = document.getElementById('lm-endpoint-input').value.trim();
+        if (!lmUrl) { toast('Enter your LM Studio URL to use AI Mode', 'error'); return; }
+        setLmEndpoint(lmUrl);
+        // Save Radarr config if provided (optional)
+        const radarrUrl = document.getElementById('radarr-url-input').value.trim();
+        const radarrKey = document.getElementById('radarr-key-input').value.trim();
+        if (radarrUrl && radarrKey) setRadarrConfig(radarrUrl, radarrKey);
+      }
     }
 
     setBtn('btn-create-session', true);

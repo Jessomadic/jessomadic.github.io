@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PickFlick Bridge Setup</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">Local Windows Bridge</p>
+        <h1>PickFlick Bridge Setup</h1>
+      </div>
+      <div id="bridge-status" class="status">Checking...</div>
+    </header>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>LM Studio</h2>
+          <p>Enter the machine and port where LM Studio is running, test it, then choose the loaded model PickFlick should use.</p>
+        </div>
+      </div>
+
+      <div class="grid two">
+        <label>
+          <span>IP / host</span>
+          <input id="lm-host" type="text" placeholder="127.0.0.1">
+        </label>
+        <label>
+          <span>Port</span>
+          <input id="lm-port" type="number" min="1" max="65535" placeholder="1234">
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="btn-test-lm">Test LM Studio</button>
+        <select id="lm-model-select" disabled>
+          <option value="">Test connection to load models</option>
+        </select>
+        <button id="btn-save-lm" disabled>Save LM Studio</button>
+      </div>
+      <div id="lm-result" class="result" hidden></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Radarr</h2>
+          <p>Enter Radarr's IP/port and API key, test auth, then select the root folder and quality profile for new AI suggestions.</p>
+        </div>
+      </div>
+
+      <div class="grid two">
+        <label>
+          <span>IP / host</span>
+          <input id="radarr-host" type="text" placeholder="127.0.0.1">
+        </label>
+        <label>
+          <span>Port</span>
+          <input id="radarr-port" type="number" min="1" max="65535" placeholder="7878">
+        </label>
+      </div>
+
+      <label>
+        <span>API key</span>
+        <input id="radarr-key" type="password" autocomplete="off" placeholder="Settings > General > API Key">
+      </label>
+
+      <div class="actions">
+        <button id="btn-test-radarr">Test Radarr</button>
+        <select id="radarr-root-select" disabled>
+          <option value="">Test connection to load root folders</option>
+        </select>
+        <select id="radarr-quality-select" disabled>
+          <option value="">Test connection to load quality profiles</option>
+        </select>
+        <button id="btn-save-radarr" disabled>Save Radarr</button>
+      </div>
+      <div id="radarr-result" class="result" hidden></div>
+    </section>
+
+    <section class="panel compact">
+      <h2>Use In PickFlick</h2>
+      <p>In PickFlick AI Mode, choose <strong>Bridge</strong> and use this URL:</p>
+      <code id="bridge-url">http://127.0.0.1:8765</code>
+      <p class="muted">Keep this bridge window running while the host is creating the AI movie deck or adding suggestions to Radarr.</p>
+    </section>
+  </main>
+  <script src="setup.js"></script>
+</body>
+</html>

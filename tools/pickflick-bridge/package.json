@@ -1,0 +1,14 @@
+{
+  "name": "pickflick-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local Windows bridge for PickFlick LM Studio and Radarr connections",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
