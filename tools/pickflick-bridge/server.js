@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.2';
+const VERSION = '0.1.3';
 const DEFAULT_PORT = 8765;
 const DEFAULT_HOST = '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -128,9 +128,10 @@ function applyCors(req, res) {
   }
   if (allowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Vary', 'Origin');
+    res.setHeader('Vary', 'Origin, Access-Control-Request-Private-Network');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
   }
 }
 
