@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.3';
+const VERSION = '0.1.4';
 const DEFAULT_PORT = 8765;
 const DEFAULT_HOST = '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -355,8 +355,8 @@ async function route(req, res) {
           { role: 'system', content: String(body.systemPrompt || '') },
           { role: 'user', content: String(body.userPrompt || '') },
         ],
-        temperature: Number.isFinite(body.temperature) ? body.temperature : 0.25,
-        max_tokens: Number.isFinite(body.maxTokens) ? body.maxTokens : 1000,
+        temperature: Number.isFinite(body.temperature) ? body.temperature : 0.15,
+        max_tokens: Number.isFinite(body.maxTokens) ? body.maxTokens : 4096,
         stream: false,
       };
       const data = await fetchJson(`${baseUrl}/v1/chat/completions`, {

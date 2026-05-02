@@ -13,6 +13,8 @@ const MOVIES_COUNT   = 30;
 const THRESHOLD      = 0.5;   // majority = > 50%
 const POLL_INTERVAL  = 2000;  // ms between Plex PIN polls
 const AUTH_TIMEOUT   = 5 * 60 * 1000; // 5 min
+const AI_LM_MAX_TOKENS = 4096;
+const AI_LM_TEMPERATURE = 0.15;
 
 // TMDB image CDN — no auth required once you have the poster_path.
 // API key is injected by CI from the TMDB_API_KEY GitHub Actions secret.
@@ -1567,8 +1569,17 @@ PART 2 — "suggestions": Recommend up to 8 real movies NOT in the catalog that 
 - Be accurate — only suggest real films with the correct title and year
 - These will be offered as Radarr downloads so accuracy matters
 
-CRITICAL: Respond ONLY with valid JSON, no markdown, no code fences, no extra text:
-{"selected":["id1","id2",...],"suggestions":[{"title":"Movie Name","year":2019},{"title":"Another Film","year":2015}],"reason":"One sentence"}`;
+CRITICAL OUTPUT RULES:
+- Return only one compact valid JSON object.
+- Do not include markdown, code fences, commentary, analysis, or reasoning.
+- Start with { and end with }.
+- "selected" must be an array of 20 to 30 string ids copied exactly from the catalog.
+- Do not put objects in "selected"; use string ids only.
+- "suggestions" must be an array of objects with title and year only.
+- "reason" must be one short sentence.
+
+Exact JSON shape:
+{"selected":["id1","id2"],"suggestions":[{"title":"Movie Name","year":2019}],"reason":"One sentence"}`;
 }
 
 function buildAiUserPrompt(catalog, descriptions) {
@@ -1584,7 +1595,13 @@ async function callLmStudio(endpoint, modelId, systemPrompt, userPrompt) {
   if (isBridgeMode()) {
     const data = await bridgeFetch('/lm/chat', {
       method: 'POST',
-      body: JSON.stringify({ modelId, systemPrompt, userPrompt }),
+      body: JSON.stringify({
+        modelId,
+        systemPrompt,
+        userPrompt,
+        temperature: AI_LM_TEMPERATURE,
+        maxTokens: AI_LM_MAX_TOKENS,
+      }),
     });
     return data.content ?? '';
   }
@@ -1600,8 +1617,8 @@ async function callLmStudio(endpoint, modelId, systemPrompt, userPrompt) {
           { role: 'system', content: systemPrompt },
           { role: 'user',   content: userPrompt   },
         ],
-        temperature: 0.25,
-        max_tokens:  1000,
+        temperature: AI_LM_TEMPERATURE,
+        max_tokens:  AI_LM_MAX_TOKENS,
         stream:      false,
       }),
       signal: ctrl.signal,
@@ -1626,8 +1643,48 @@ function parseLmResponse(text) {
   if (!match) throw new Error('AI response did not contain JSON. Got: ' + t.slice(0, 300));
   const parsed = JSON.parse(match[0]);
   if (!Array.isArray(parsed.selected)) throw new Error('AI response missing "selected" array. Got: ' + t.slice(0, 300));
+  parsed.selected = parsed.selected
+    .map(item => {
+      if (typeof item === 'string' || typeof item === 'number') return String(item);
+      if (item && typeof item === 'object') {
+        return String(item.id ?? item.ratingKey ?? item.movieId ?? '').trim();
+      }
+      return '';
+    })
+    .filter(Boolean);
+  if (!parsed.selected.length) throw new Error('AI response did not include usable movie ids. Got: ' + t.slice(0, 300));
   if (!Array.isArray(parsed.suggestions)) parsed.suggestions = [];
   return parsed;
+}
+
+async function callLmStudioForJson(endpoint, modelId, catalog, descriptions, setStatus) {
+  const systemPrompt = buildAiSystemPrompt();
+  const userPrompt = buildAiUserPrompt(catalog, descriptions);
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0 && setStatus) {
+      await setStatus('AI returned malformed JSON; retrying with stricter formatting...');
+    }
+    const raw = await callLmStudio(
+      endpoint,
+      modelId,
+      attempt === 0
+        ? systemPrompt
+        : `${systemPrompt}\n\nRETRY INSTRUCTION: Your previous response was not valid JSON. Output the final JSON object only. No reasoning, notes, markdown, or prose.`,
+      attempt === 0
+        ? userPrompt
+        : `${userPrompt}\n\nReturn only the JSON object now. The first character must be { and the last character must be }.`
+    );
+
+    try {
+      return parseLmResponse(raw);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  throw lastError;
 }
 
 async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setStatus) {
@@ -1640,14 +1697,7 @@ async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setS
   for (let i = 0; i < chunks.length; i++) {
     await setStatus(`Reading library chunk ${i + 1}/${chunks.length} (${chunks[i].length} movies)...`);
 
-    const raw = await callLmStudio(
-      endpoint,
-      modelId,
-      buildAiSystemPrompt(),
-      buildAiUserPrompt(chunks[i], descriptions)
-    );
-
-    const parsed = parseLmResponse(raw);
+    const parsed = await callLmStudioForJson(endpoint, modelId, chunks[i], descriptions, setStatus);
     parsed.selected.slice(0, 14).forEach(id => selectedIds.add(String(id)));
     (parsed.suggestions ?? []).slice(0, 8).forEach(s => suggestions.push(s));
     if (parsed.reason) reasons.push(parsed.reason);
@@ -1665,13 +1715,7 @@ async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setS
 
   await setStatus(`Narrowing ${candidates.length} candidates into the final deck...`);
 
-  const finalRaw = await callLmStudio(
-    endpoint,
-    modelId,
-    buildAiSystemPrompt(),
-    buildAiUserPrompt(candidates, descriptions)
-  );
-  const finalParsed = parseLmResponse(finalRaw);
+  const finalParsed = await callLmStudioForJson(endpoint, modelId, candidates, descriptions, setStatus);
 
   return {
     selected: finalParsed.selected,
