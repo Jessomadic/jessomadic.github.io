@@ -622,7 +622,7 @@
 
           <!-- ── AI Mode (Beta) ── -->
           <div class="divider" style="margin:4px 0"></div>
-          <div class="ai-toggle-row" id="ai-toggle-row">
+          <button type="button" class="ai-toggle-row" id="ai-toggle-row" aria-pressed="false" style="width:100%;background:none;border:0;text-align:left;font:inherit;color:inherit">
             <div>
               <div style="font-size:14px;font-weight:600;color:var(--white);display:flex;align-items:center;gap:6px">
                 🧠 AI Mode <span class="beta-badge">Beta</span>
@@ -632,7 +632,7 @@
             <div class="ai-toggle-track" id="ai-toggle-track">
               <div class="ai-toggle-thumb"></div>
             </div>
-          </div>
+          </button>
           <div class="ai-config-card" id="ai-config-section" style="display:none">
             <div style="font-size:12px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">LM Studio</div>
             <div class="input-group" style="margin-bottom:0">
@@ -641,6 +641,9 @@
             </div>
             <button class="btn btn-secondary" id="btn-test-lm" style="padding:10px 16px">🔌 Test LM Studio</button>
             <div id="lm-test-result" style="display:none"></div>
+            <p style="font-size:11px;color:var(--muted);line-height:1.65">
+              Because this page is served over HTTPS, local/private-network URLs may also need HTTPS or browser private-network access permissions.
+            </p>
             <p style="font-size:11px;color:var(--muted);line-height:1.65">
               LM Studio must have <strong style="color:var(--subtle)">CORS enabled</strong> (Settings → Server) and a model loaded.
               URL stays on this device — never shared.
@@ -660,6 +663,9 @@
             </div>
             <button class="btn btn-secondary" id="btn-test-radarr" style="padding:10px 16px">📡 Test Radarr</button>
             <div id="radarr-test-result" style="display:none"></div>
+            <p style="font-size:11px;color:var(--muted);line-height:1.65">
+              Radarr is optional. From GitHub Pages, local Radarr URLs may require HTTPS, CORS, or a local proxy to work in your browser.
+            </p>
           </div>
 
           <button class="btn btn-primary" id="btn-create-session">🚀 Create Session</button>
