@@ -22,6 +22,10 @@ const AI_LM_TEMPERATURE = 0.15;
 // over-fetching; fall back to w500 for the winner overlay if you ever
 // need higher resolution.
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w342';
+const TMDB_POSTER_SIZES = ['w342', 'w500', 'w780', 'original'];
+const POSTER_LOAD_TIMEOUT_MS = 9000;
+const POSTER_RETRY_DELAY_MS = 350;
+const POSTER_SOURCE_RETRIES = 1;
 
 // ── Wheel constants ───────────────────────────────────────────
 const WHEEL_COLORS = [
@@ -326,8 +330,6 @@ async function plexGetMovies(uri, sectionKey, genreFastKey, token) {
 // Returns the image.tmdb.org CDN URL, or null on any failure.
 async function fetchTmdbPoster(m, apiKey) {
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 5000);
     const tmdbId = rawTmdbId(m);
     let url = '';
     if (tmdbId) {
@@ -338,13 +340,50 @@ async function fetchTmdbPoster(m, apiKey) {
         ? `https://api.themoviedb.org/3/find/${encodeURIComponent(imdbId)}?api_key=${apiKey}&external_source=imdb_id&language=en-US`
         : `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(m.title ?? '')}${m.year ? `&year=${encodeURIComponent(m.year)}` : ''}&language=en-US&page=1`;
     }
-    const r = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(t);
-    if (!r.ok) return null;
-    const d = await r.json();
+    const d = await fetchJsonWithRetry(url, 6500, 1);
     const movie = tmdbId ? d : (d.movie_results?.[0] ?? d.results?.[0]);
     return movie?.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null;
   } catch { return null; }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchJsonWithRetry(url, timeoutMs = 6500, retries = 0) {
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.json();
+    } catch (e) {
+      clearTimeout(t);
+      lastError = e;
+      if (attempt < retries) await sleep(250 * (attempt + 1));
+    }
+  }
+  throw lastError ?? new Error('Request failed');
+}
+
+async function mapWithConcurrency(items, limit, mapper) {
+  const results = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      try {
+        results[index] = { status: 'fulfilled', value: await mapper(items[index], index) };
+      } catch (reason) {
+        results[index] = { status: 'rejected', reason };
+      }
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }
 
 // Batch-fetch TMDB poster URLs for an array of raw Plex movies in parallel.
@@ -353,10 +392,10 @@ async function fetchTmdbPoster(m, apiKey) {
 async function fetchTmdbPosters(rawMovies) {
   const apiKey = window.tmdbApiKey;
   if (!apiKey || apiKey === 'YOUR_TMDB_API_KEY') return {};
-  const pairs = await Promise.allSettled(
-    rawMovies.map(m =>
-      fetchTmdbPoster(m, apiKey).then(url => ({ key: String(m.ratingKey), url }))
-    )
+  const pairs = await mapWithConcurrency(
+    rawMovies,
+    6,
+    m => fetchTmdbPoster(m, apiKey).then(url => ({ key: String(m.ratingKey), url })),
   );
   const map = {};
   for (const r of pairs) {
@@ -611,11 +650,11 @@ function renderStack() {
   // renderStack is called again (after a swipe).  This prevents a flash of
   // empty/loading poster when the stack replenishes on slow connections.
   const nextMovie = state.movies[state.currentIdx + toRender];
-  const preloadSrc = posterSourcesFor(nextMovie)[0];
-  if (preloadSrc) {
+  posterSourcesFor(nextMovie).slice(0, 2).forEach(preloadSrc => {
     const preload = new Image();
+    preload.decoding = 'async';
     preload.src = preloadSrc;
-  }
+  });
 
   // Disable buttons when no cards left
   const noneLeft = state.currentIdx >= state.movies.length;
@@ -1344,14 +1383,69 @@ function isSafePosterUrl(url) {
   }
 }
 
+function tmdbPosterVariants(url) {
+  try {
+    const parsed = new URL(String(url), window.location.href);
+    if (parsed.hostname !== 'image.tmdb.org') return [url];
+    const match = parsed.pathname.match(/^\/t\/p\/([^/]+)(\/.+)$/);
+    if (!match) return [url];
+    const [, currentSize, imagePath] = match;
+    const sizes = [currentSize, ...TMDB_POSTER_SIZES.filter(size => size !== currentSize)];
+    return sizes.map(size => {
+      const copy = new URL(parsed.href);
+      copy.pathname = `/t/p/${size}${imagePath}`;
+      return copy.href;
+    });
+  } catch {
+    return [url];
+  }
+}
+
+function plexPosterVariants(url) {
+  try {
+    const parsed = new URL(String(url), window.location.href);
+    if (!parsed.searchParams.has('X-Plex-Token')) return [url];
+    const sizes = [[200, 300], [342, 513], [500, 750]];
+    const variants = [parsed.href];
+    sizes.forEach(([width, height]) => {
+      const copy = new URL(parsed.href);
+      copy.searchParams.set('width', String(width));
+      copy.searchParams.set('height', String(height));
+      variants.push(copy.href);
+    });
+    return variants;
+  } catch {
+    return [url];
+  }
+}
+
+function posterSourceVariants(url) {
+  return uniqueFlat([tmdbPosterVariants(url), plexPosterVariants(url)]);
+}
+
+function uniqueFlat(groups) {
+  const seen = new Set();
+  const values = [];
+  flattenValues(groups).forEach(value => {
+    const next = String(value ?? '').trim();
+    if (!next || seen.has(next)) return;
+    seen.add(next);
+    values.push(next);
+  });
+  return values;
+}
+
 function uniquePosterSources(...groups) {
   const seen = new Set();
   const sources = [];
   flattenValues(groups).forEach(value => {
-    const url = String(value ?? '').trim();
-    if (!url || seen.has(url) || !isSafePosterUrl(url)) return;
-    seen.add(url);
-    sources.push(url);
+    const rawUrl = String(value ?? '').trim();
+    if (!rawUrl) return;
+    posterSourceVariants(rawUrl).forEach(url => {
+      if (!url || seen.has(url) || !isSafePosterUrl(url)) return;
+      seen.add(url);
+      sources.push(url);
+    });
   });
   return sources;
 }
@@ -1378,9 +1472,31 @@ function parsePosterSources(img) {
   }
 }
 
+function posterRetrySrc(src, attempt) {
+  if (!attempt) return src;
+  try {
+    const parsed = new URL(src, window.location.href);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return src;
+    parsed.searchParams.set('pf_retry', String(attempt));
+    return parsed.href;
+  } catch {
+    return src;
+  }
+}
+
 function bindPosterImage(img, placeholder = posterPlaceholderFor(img)) {
   const sources = uniquePosterSources(parsePosterSources(img), img.getAttribute('src'));
   let index = 0;
+  let attempt = 0;
+  let timeout = null;
+  const bindId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  img.dataset.posterBindId = bindId;
+
+  const isCurrentBind = () => img.dataset.posterBindId === bindId;
+  const clearPosterTimeout = () => {
+    if (timeout) clearTimeout(timeout);
+    timeout = null;
+  };
 
   const showPlaceholder = () => {
     img.classList.remove('loaded');
@@ -1388,26 +1504,48 @@ function bindPosterImage(img, placeholder = posterPlaceholderFor(img)) {
     if (placeholder) placeholder.style.display = 'flex';
   };
   const showLoaded = () => {
+    if (!isCurrentBind()) return;
+    if (img.naturalWidth === 0) {
+      failOrRetry();
+      return;
+    }
+    clearPosterTimeout();
     img.style.display = 'block';
     img.classList.add('loaded');
     if (placeholder) placeholder.style.display = 'none';
   };
-  const loadAt = nextIndex => {
+  const failOrRetry = () => {
+    if (!isCurrentBind()) return;
+    clearPosterTimeout();
+    if (attempt < POSTER_SOURCE_RETRIES) {
+      attempt += 1;
+      setTimeout(() => loadAt(index, attempt), POSTER_RETRY_DELAY_MS);
+      return;
+    }
+    loadAt(index + 1, 0);
+  };
+  const loadAt = (nextIndex, nextAttempt = 0) => {
+    if (!isCurrentBind()) return;
     const src = sources[nextIndex];
     if (!src) {
+      clearPosterTimeout();
       img.removeAttribute('src');
       img.style.display = 'none';
       showPlaceholder();
       return;
     }
     index = nextIndex;
+    attempt = nextAttempt;
     img.style.display = 'block';
     showPlaceholder();
-    if (img.getAttribute('src') !== src) img.src = src;
+    clearPosterTimeout();
+    timeout = setTimeout(failOrRetry, POSTER_LOAD_TIMEOUT_MS);
+    const nextSrc = posterRetrySrc(src, attempt);
+    if (img.getAttribute('src') !== nextSrc) img.src = nextSrc;
   };
 
   img.onload = showLoaded;
-  img.onerror = () => loadAt(index + 1);
+  img.onerror = failOrRetry;
 
   if (!sources.length) {
     loadAt(0);
