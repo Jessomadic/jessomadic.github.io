@@ -72,6 +72,7 @@ async function loadConfig() {
     $('lm-model-select').value = lm.modelId;
     $('btn-save-lm').disabled = false;
   }
+  if (lm.hasApiKey) $('lm-key').placeholder = 'Saved API token (enter a new token to change)';
 
   const radarr = health.config.radarr;
   const radarrParts = splitBaseUrl(radarr.baseUrl, 7878);
@@ -87,7 +88,7 @@ async function testLm() {
     const baseUrl = buildUrl('lm-host', 'lm-port', 1234);
     const data = await api('/api/lm/test', {
       method: 'POST',
-      body: JSON.stringify({ baseUrl }),
+      body: JSON.stringify({ baseUrl, apiKey: $('lm-key').value.trim() }),
     });
     fillSelect(
       $('lm-model-select'),
@@ -99,7 +100,7 @@ async function testLm() {
     $('btn-save-lm').disabled = data.models.length === 0;
     setResult('lm-result', data.models.length > 0,
       data.models.length
-        ? `Connected to LM Studio. Found ${data.models.length} model(s).`
+        ? `Connected to LM Studio through ${data.endpoint}. Found ${data.models.length} model(s).`
         : 'Connected to LM Studio, but no model is loaded.');
   } catch (e) {
     $('lm-model-select').disabled = true;
@@ -122,9 +123,12 @@ async function saveLm() {
       body: JSON.stringify({
         baseUrl: buildUrl('lm-host', 'lm-port', 1234),
         modelId,
+        apiKey: $('lm-key').value.trim(),
       }),
     });
     setResult('lm-result', true, `Saved LM Studio model: ${modelId}`);
+    $('lm-key').value = '';
+    $('lm-key').placeholder = 'Saved API token (enter a new token to change)';
   } catch (e) {
     setResult('lm-result', false, e.message);
   }

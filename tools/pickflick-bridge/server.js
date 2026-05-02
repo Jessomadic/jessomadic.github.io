@@ -39,6 +39,7 @@ function defaultConfig() {
     lmStudio: {
       baseUrl: '',
       modelId: '',
+      apiKey: '',
     },
     radarr: {
       baseUrl: '',
@@ -88,6 +89,7 @@ function sanitizedConfig() {
     lmStudio: {
       baseUrl: config.lmStudio.baseUrl,
       modelId: config.lmStudio.modelId,
+      hasApiKey: !!config.lmStudio.apiKey,
       configured: !!(config.lmStudio.baseUrl && config.lmStudio.modelId),
     },
     radarr: {
@@ -171,14 +173,53 @@ async function fetchJson(url, options = {}, timeoutMs = 10000) {
   }
 }
 
-async function testLm(baseUrl) {
+function lmHeaders(apiKey, json = false) {
+  const headers = {};
+  const key = String(apiKey || '').trim();
+  if (key) headers.Authorization = `Bearer ${key}`;
+  if (json) headers['Content-Type'] = 'application/json';
+  return headers;
+}
+
+function normalizeLmModels(data) {
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.models)
+        ? data.models
+        : [];
+
+  return list
+    .map(model => {
+      if (typeof model === 'string') return { id: model };
+      const id = model?.id || model?.modelKey || model?.path || model?.name;
+      return id ? { ...model, id: String(id) } : null;
+    })
+    .filter(Boolean);
+}
+
+async function testLm(baseUrl, apiKey = config.lmStudio.apiKey) {
   const normalized = normalizeBaseUrl(baseUrl, 1234);
   if (!normalized) throw new Error('LM Studio URL is required');
-  const data = await fetchJson(`${normalized}/v1/models`, {}, 10000);
-  return {
-    baseUrl: normalized,
-    models: Array.isArray(data?.data) ? data.data : [],
-  };
+  const endpoints = ['/v1/models', '/api/v1/models', '/api/v0/models'];
+  const errors = [];
+  for (const endpoint of endpoints) {
+    try {
+      const data = await fetchJson(`${normalized}${endpoint}`, {
+        headers: lmHeaders(apiKey),
+      }, 10000);
+      const models = normalizeLmModels(data);
+      if (models.length) return { baseUrl: normalized, endpoint, models };
+      errors.push(`${endpoint}: no models in response`);
+    } catch (e) {
+      if (e.status === 401) {
+        throw new Error('LM Studio returned HTTP 401. If authentication is enabled in LM Studio Server Settings, paste an LM Studio API token here and test again.');
+      }
+      errors.push(`${endpoint}: ${e.message}`);
+    }
+  }
+  throw new Error(`Could not list LM Studio models. Tried ${endpoints.join(', ')}. ${errors[errors.length - 1] || ''}`);
 }
 
 async function testRadarr(baseUrl, apiKey) {
@@ -266,7 +307,8 @@ async function route(req, res) {
     }
     if (req.method === 'POST' && pathname === '/api/lm/test') {
       const body = await readJson(req);
-      const result = await testLm(body.baseUrl);
+      const apiKey = body.apiKey ? String(body.apiKey).trim() : config.lmStudio.apiKey;
+      const result = await testLm(body.baseUrl, apiKey);
       sendJson(req, res, 200, { ok: true, ...result });
       return;
     }
@@ -274,16 +316,18 @@ async function route(req, res) {
       const body = await readJson(req);
       const baseUrl = normalizeBaseUrl(body.baseUrl, 1234);
       const modelId = String(body.modelId || '').trim();
+      const apiKey = body.apiKey ? String(body.apiKey).trim() : config.lmStudio.apiKey;
       if (!baseUrl) throw new Error('LM Studio URL is required');
       if (!modelId) throw new Error('Choose an LM Studio model');
       config.lmStudio.baseUrl = baseUrl;
       config.lmStudio.modelId = modelId;
+      config.lmStudio.apiKey = apiKey;
       saveConfig(config);
       sendJson(req, res, 200, { ok: true, config: sanitizedConfig() });
       return;
     }
     if (req.method === 'GET' && pathname === '/lm/models') {
-      const result = await testLm(config.lmStudio.baseUrl);
+      const result = await testLm(config.lmStudio.baseUrl, config.lmStudio.apiKey);
       sendJson(req, res, 200, { ok: true, modelId: config.lmStudio.modelId, models: result.models });
       return;
     }
@@ -305,7 +349,7 @@ async function route(req, res) {
       };
       const data = await fetchJson(`${baseUrl}/v1/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: lmHeaders(config.lmStudio.apiKey, true),
         body: JSON.stringify(payload),
       }, 120000);
       sendJson(req, res, 200, {

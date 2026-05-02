@@ -41,7 +41,7 @@ $configPath = Join-Path $base "config.json"
 if (-not (Test-Path $configPath)) {
   $config = @{
     bridge = @{ host = "127.0.0.1"; port = $Port }
-    lmStudio = @{ baseUrl = ""; modelId = "" }
+    lmStudio = @{ baseUrl = ""; modelId = ""; apiKey = "" }
     radarr = @{ baseUrl = ""; apiKey = ""; rootFolderPath = ""; qualityProfileId = $null }
   } | ConvertTo-Json -Depth 5
   Set-Content -LiteralPath $configPath -Value $config -Encoding UTF8
