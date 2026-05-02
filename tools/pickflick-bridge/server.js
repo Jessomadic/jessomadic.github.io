@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 const DEFAULT_PORT = 8765;
 const DEFAULT_HOST = '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -25,6 +25,12 @@ const ALLOWED_ORIGINS = new Set([
   'http://127.0.0.1',
   'http://localhost',
 ]);
+
+const FEATURES = {
+  lmStudioApiKey: true,
+  lmStudioModelEndpoints: ['/v1/models', '/api/v1/models', '/api/v0/models'],
+  radarrSetup: true,
+};
 
 function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -214,7 +220,9 @@ async function testLm(baseUrl, apiKey = config.lmStudio.apiKey) {
       errors.push(`${endpoint}: no models in response`);
     } catch (e) {
       if (e.status === 401) {
-        throw new Error('LM Studio returned HTTP 401. If authentication is enabled in LM Studio Server Settings, paste an LM Studio API token here and test again.');
+        const authError = new Error('LM Studio returned HTTP 401. If authentication is enabled in LM Studio Server Settings, paste an LM Studio API token here and test again.');
+        authError.status = 401;
+        throw authError;
       }
       errors.push(`${endpoint}: ${e.message}`);
     }
@@ -297,6 +305,7 @@ async function route(req, res) {
         ok: true,
         name: 'PickFlick Bridge',
         version: VERSION,
+        features: FEATURES,
         config: sanitizedConfig(),
       });
       return;

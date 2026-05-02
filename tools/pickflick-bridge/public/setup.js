@@ -57,10 +57,23 @@ function fillSelect(select, items, getValue, getLabel, placeholder) {
   select.disabled = items.length === 0;
 }
 
+function renderBridgeStatus(health) {
+  const version = health.version ? `v${health.version}` : 'unknown version';
+  const hasLmAuthSupport = !!health.features?.lmStudioApiKey;
+  $('bridge-status').textContent = hasLmAuthSupport ? `Running ${version}` : `Restart needed (${version})`;
+  $('bridge-status').className = hasLmAuthSupport ? 'status ok' : 'status error';
+  if (!hasLmAuthSupport) {
+    setResult(
+      'lm-result',
+      false,
+      'The setup page is updated, but the running bridge process is older and cannot forward the LM Studio API token yet. Restart or reinstall PickFlick Bridge, then refresh this page.'
+    );
+  }
+}
+
 async function loadConfig() {
   const health = await api('/health');
-  $('bridge-status').textContent = 'Running';
-  $('bridge-status').className = 'status ok';
+  renderBridgeStatus(health);
   $('bridge-url').textContent = `http://${location.host}`;
 
   const lm = health.config.lmStudio;

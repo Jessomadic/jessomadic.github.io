@@ -13,6 +13,7 @@ From this folder, run PowerShell:
 The installer:
 
 - checks for Node.js 18 or newer
+- stops an already-running PickFlick Bridge on the same port before updating files
 - copies the bridge to `%LOCALAPPDATA%\PickFlickBridge\app`
 - creates a desktop setup shortcut
 - creates a startup shortcut so the bridge starts when Windows signs in
@@ -36,6 +37,8 @@ http://127.0.0.1:8765
 ```
 
 Keep the bridge running while the host is finding movies with AI or adding a non-library suggestion to Radarr.
+
+If the setup page says `Restart needed`, rerun `.\Install-PickFlickBridge.ps1` from this folder. That means the browser loaded updated setup files while an older bridge process was still running.
 
 ## API
 

@@ -18,6 +18,34 @@ function Require-Node {
   }
 }
 
+function Stop-ExistingBridge {
+  param(
+    [int]$Port
+  )
+
+  $connections = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+  foreach ($connection in $connections) {
+    $processId = [int]$connection.OwningProcess
+    if (-not $processId -or $processId -eq $PID) { continue }
+
+    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction SilentlyContinue
+    $commandLine = if ($process) { [string]$process.CommandLine } else { "" }
+    $name = if ($process) { [string]$process.Name } else { "" }
+    $looksLikeBridge = $name -ieq "node.exe" -and (
+      $commandLine -match "PickFlickBridge" -or
+      $commandLine -match "server\.js"
+    )
+
+    if (-not $looksLikeBridge) {
+      throw "Port $Port is already in use by process $processId ($name). Stop that process or choose another port."
+    }
+
+    Write-Host "Stopping existing PickFlick Bridge process: $processId"
+    Stop-Process -Id $processId -Force
+    Start-Sleep -Milliseconds 500
+  }
+}
+
 Require-Node
 
 $source = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -28,6 +56,7 @@ $startupShortcut = Join-Path $startup "PickFlick Bridge.lnk"
 $startScript = Join-Path $app "Start-PickFlickBridge.ps1"
 
 New-Item -ItemType Directory -Force -Path $app | Out-Null
+Stop-ExistingBridge -Port $Port
 
 $items = @("server.js", "package.json", "public", "Start-PickFlickBridge.ps1", "Uninstall-PickFlickBridge.ps1")
 foreach ($item in $items) {
