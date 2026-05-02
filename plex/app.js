@@ -463,6 +463,23 @@ function onSessionUpdate(session) {
     if (session.aiMode) updateAiDescriptionStatus(session.participants, session.aiDescriptions, session.aiStatus);
   }
 
+  // AI replay: host can send everyone back to the AI lobby to update
+  // preferences or rerun the model. This must be Firebase-driven so guests
+  // do not remain stranded on results or the wheel.
+  if (session.aiMode && session.status === 'lobby' && activeScreen !== 'screen-lobby') {
+    const overlay = document.getElementById('winner-overlay');
+    if (overlay) overlay.style.display = 'none';
+    wheelMovies = []; wheelRotation = 0; wheelAnimating = false;
+    _latestWheelData = null; _lastAnimatedSpinId = null;
+    if (wheelUnsubscribe) { wheelUnsubscribe(); wheelUnsubscribe = null; }
+    state.movies = normaliseMoviesFromFirebase(session.movies);
+    state.swipes = {};
+    state.currentIdx = 0;
+    clearSwipeProgress();
+    showLobby(state.sessionCode, state.role === 'host', true);
+    return;
+  }
+
   // Lobby → swiping transition (host clicked Start)
   if (session.status === 'swiping' && activeScreen === 'screen-lobby') {
     state.movies = normaliseMoviesFromFirebase(session.movies);
@@ -1737,7 +1754,7 @@ function updateAiDescriptionStatus(participants, descriptions, aiStatus = null) 
       statusText.textContent = aiStatus.message ?? 'AI is finding movies...';
       statusRow.style.display = 'flex';
       if (aiBtn) aiBtn.disabled = true;
-    } else if (state.role !== 'host') {
+    } else {
       statusRow.style.display = 'none';
     }
   }
