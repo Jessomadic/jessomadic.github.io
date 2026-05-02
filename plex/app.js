@@ -99,19 +99,35 @@ function showScreen(id) {
 // instead of arrays ({0:"Action"} instead of ["Action"]).  Call this on every
 // movie array read back from Firebase before it reaches the UI.
 function normaliseMoviesFromFirebase(movies) {
-  return (movies ?? []).map(m => ({
-    ...m,
-    genres: Array.isArray(m.genres) ? m.genres : Object.values(m.genres ?? {}),
-  }));
+  return (movies ?? []).map(m => {
+    const posterSources = uniquePosterSources(m.posterSources, m.poster);
+    return {
+      ...m,
+      genres: Array.isArray(m.genres) ? m.genres : Object.values(m.genres ?? {}),
+      poster: posterSources[0] ?? null,
+      posterSources,
+    };
+  });
 }
 
-let toastTimer;
 function toast(msg, type = 'info') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = `show${type === 'error' ? ' error' : ''}`;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+  const root = document.getElementById('toast');
+  if (!root) return;
+
+  const item = document.createElement('div');
+  item.className = `toast-item${type === 'error' ? ' error' : ''}`;
+  item.textContent = msg;
+  root.appendChild(item);
+
+  while (root.children.length > 4) root.firstElementChild?.remove();
+
+  requestAnimationFrame(() => item.classList.add('show'));
+
+  const close = () => {
+    item.classList.remove('show');
+    setTimeout(() => item.remove(), 260);
+  };
+  setTimeout(close, type === 'error' ? 5200 : 3600);
 }
 
 function setBtn(id, loading, text = '') {
@@ -309,20 +325,25 @@ async function plexGetMovies(uri, sectionKey, genreFastKey, token) {
 // Plex embeds external IDs in m.Guid, e.g. [{id:"tmdb://27205"},{id:"imdb://tt1375666"}].
 // Returns the image.tmdb.org CDN URL, or null on any failure.
 async function fetchTmdbPoster(m, apiKey) {
-  const tmdbGuid = (m.Guid ?? []).find(g => g.id?.startsWith('tmdb://'));
-  if (!tmdbGuid) return null;
-  const tmdbId = tmdbGuid.id.slice('tmdb://'.length);
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 5000);
-    const r = await fetch(
-      `https://api.themoviedb.org/3/movie/${encodeURIComponent(tmdbId)}?api_key=${apiKey}&language=en-US`,
-      { signal: ctrl.signal },
-    );
+    const tmdbId = rawTmdbId(m);
+    let url = '';
+    if (tmdbId) {
+      url = `https://api.themoviedb.org/3/movie/${encodeURIComponent(tmdbId)}?api_key=${apiKey}&language=en-US`;
+    } else {
+      const imdbId = rawImdbId(m);
+      url = imdbId
+        ? `https://api.themoviedb.org/3/find/${encodeURIComponent(imdbId)}?api_key=${apiKey}&external_source=imdb_id&language=en-US`
+        : `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(m.title ?? '')}${m.year ? `&year=${encodeURIComponent(m.year)}` : ''}&language=en-US&page=1`;
+    }
+    const r = await fetch(url, { signal: ctrl.signal });
     clearTimeout(t);
     if (!r.ok) return null;
     const d = await r.json();
-    return d.poster_path ? `${TMDB_IMAGE_BASE}${d.poster_path}` : null;
+    const movie = tmdbId ? d : (d.movie_results?.[0] ?? d.results?.[0]);
+    return movie?.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : null;
   } catch { return null; }
 }
 
@@ -351,6 +372,7 @@ function formatMovie(m, plexUri, token, tmdbUrl = null) {
     ? `${plexUri}${m.thumb}?X-Plex-Token=${token}&width=200&height=300`
     : null;
   const tmdbId = rawTmdbId(m);
+  const posterSources = uniquePosterSources(tmdbUrl, plexPoster);
   return {
     id:            String(m.ratingKey),
     title:         m.title ?? 'Unknown',
@@ -360,7 +382,8 @@ function formatMovie(m, plexUri, token, tmdbUrl = null) {
     contentRating: m.contentRating ?? '',
     duration:      m.duration ? `${Math.round(m.duration / 60000)} min` : '',
     genres:        (m.Genre ?? []).map(g => g.tag).slice(0, 3),
-    poster:        tmdbUrl ?? plexPoster,
+    poster:        posterSources[0] ?? null,
+    posterSources,
     inLibrary:     true,
     tmdbId,
   };
@@ -370,6 +393,12 @@ function rawTmdbId(m) {
   const tmdbGuid = (m.Guid ?? []).find(g => g.id?.startsWith('tmdb://'));
   const parsed = tmdbGuid ? Number.parseInt(tmdbGuid.id.slice('tmdb://'.length), 10) : null;
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function rawImdbId(m) {
+  const imdbGuid = (m.Guid ?? []).find(g => g.id?.startsWith('imdb://'));
+  const imdbId = imdbGuid?.id?.slice('imdb://'.length) ?? '';
+  return /^tt\d+$/i.test(imdbId) ? imdbId : null;
 }
 
 // ── Session helpers ───────────────────────────────────────────
@@ -582,9 +611,10 @@ function renderStack() {
   // renderStack is called again (after a swipe).  This prevents a flash of
   // empty/loading poster when the stack replenishes on slow connections.
   const nextMovie = state.movies[state.currentIdx + toRender];
-  if (nextMovie?.poster) {
+  const preloadSrc = posterSourcesFor(nextMovie)[0];
+  if (preloadSrc) {
     const preload = new Image();
-    preload.src = nextMovie.poster;
+    preload.src = preloadSrc;
   }
 
   // Disable buttons when no cards left
@@ -598,9 +628,7 @@ function buildCard(movie) {
   card.className = 'swipe-card';
   card.dataset.id = movie.id;
 
-  const posterHtml = movie.poster
-    ? `<img src="${movie.poster}" alt="${escHtml(movie.title)}" onerror="this.style.display='none';this.closest('.card-poster').querySelector('.poster-placeholder').style.display='flex'">`
-    : '';
+  const posterHtml = posterImageHtml(movie, 'card-poster-img', movie.title);
   const metaParts = [movie.year, movie.duration, movie.rating ? `⭐ ${movie.rating}` : null].filter(Boolean);
   const badge = movie.contentRating ? `<span class="badge">${escHtml(movie.contentRating)}</span>` : '';
   const notInLib = movie.inLibrary === false
@@ -612,7 +640,7 @@ function buildCard(movie) {
     : '';
 
   const placeholderHtml = `
-    <div class="poster-placeholder" style="display:${movie.poster ? 'none' : 'flex'}">
+    <div class="poster-placeholder">
       <div class="ph-icon">🎬</div>
       <div class="ph-title">${escHtml(movie.title)}</div>
       ${movie.year ? `<div class="ph-meta">${escHtml(movie.year)}</div>` : ''}
@@ -637,6 +665,7 @@ function buildCard(movie) {
       ${movie.summary ? `<p class="card-summary">${escHtml(movie.summary)}</p>` : ''}
       ${genres}
     </div>`;
+  hydratePosterImages(card);
   return card;
 }
 
@@ -806,9 +835,10 @@ function showResults(session) {
       : '';
     list.innerHTML = `
       <div class="result-item">
-        ${movie.poster
-          ? `<img class="result-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="result-poster-placeholder" style="display:none">🎬</div>`
-          : `<div class="result-poster-placeholder">🎬</div>`}
+        <div class="result-poster-shell">
+          ${posterImageHtml(movie, 'result-poster', movie.title, 'lazy')}
+          <div class="result-poster-placeholder">&#127916;</div>
+        </div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:16px;margin-bottom:2px">${escHtml(movie.title)}</div>
           <div class="text-muted" style="font-size:13px">${[movie.year, movie.duration].filter(Boolean).join(' · ')}</div>
@@ -817,6 +847,7 @@ function showResults(session) {
         </div>
         <div class="match-pct">${yesVotes}/${pCount}</div>
       </div>`;
+    hydratePosterImages(list);
     // Radarr download button for non-library winner
     if (movie.inLibrary === false && movie.tmdbId) {
       const { url, key } = getRadarrConfig();
@@ -832,6 +863,7 @@ function showResults(session) {
           try {
             const res = await addToRadarr(movie);
             radarrBtn.textContent = res.alreadyExists ? '✅ Already in Radarr' : '✅ Added to Radarr!';
+            toast(res.alreadyExists ? `${movie.title} is already in Radarr.` : `${movie.title} added to Radarr.`, 'info');
           } catch (e) {
             toast(e.message, 'error');
             radarrBtn.disabled  = false;
@@ -1132,18 +1164,7 @@ function showWheelWinner(movie) {
 
   const posterImg = document.getElementById('winner-poster');
   const posterPh  = document.getElementById('winner-poster-ph');
-  if (movie.poster) {
-    posterImg.onerror = () => {
-      posterImg.style.display = 'none';
-      posterPh.style.display  = 'flex';
-    };
-    posterImg.src           = movie.poster;
-    posterImg.style.display = 'block';
-    posterPh.style.display  = 'none';
-  } else {
-    posterImg.style.display = 'none';
-    posterPh.style.display  = 'flex';
-  }
+  setPosterImage(posterImg, movie, posterPh);
 
   // Show Radarr download button if movie isn't in the library and Radarr is configured
   wireWinnerRadarrBtn(movie);
@@ -1165,6 +1186,7 @@ function wireWinnerRadarrBtn(movie) {
       try {
         const res = await addToRadarr(movie);
         btn.textContent = res.alreadyExists ? '✅ Already in Radarr' : '✅ Added to Radarr!';
+        toast(res.alreadyExists ? `${movie.title} is already in Radarr.` : `${movie.title} added to Radarr.`, 'info');
       } catch (e) {
         toast(e.message, 'error');
         btn.disabled  = false;
@@ -1303,6 +1325,120 @@ async function refreshMovieCount(sectionKey, genreFastKey) {
 // ── Utility ────────────────────────────────────────────────────
 function escHtml(str) {
   return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function flattenValues(value) {
+  if (Array.isArray(value)) return value.flatMap(flattenValues);
+  if (value && typeof value === 'object') return Object.values(value).flatMap(flattenValues);
+  return value == null ? [] : [value];
+}
+
+function isSafePosterUrl(url) {
+  try {
+    const parsed = new URL(String(url), window.location.href);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'data:' || parsed.protocol === 'blob:') return true;
+    if (parsed.protocol !== 'http:') return false;
+    return window.location.protocol !== 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function uniquePosterSources(...groups) {
+  const seen = new Set();
+  const sources = [];
+  flattenValues(groups).forEach(value => {
+    const url = String(value ?? '').trim();
+    if (!url || seen.has(url) || !isSafePosterUrl(url)) return;
+    seen.add(url);
+    sources.push(url);
+  });
+  return sources;
+}
+
+function posterSourcesFor(movie) {
+  return uniquePosterSources(movie?.posterSources, movie?.poster);
+}
+
+function posterImageHtml(movie, className, alt, loading = 'eager') {
+  const sources = posterSourcesFor(movie);
+  if (!sources.length) return '';
+  return `<img class="${escHtml(className)} poster-img" src="${escHtml(sources[0])}" data-poster-sources="${escHtml(JSON.stringify(sources))}" alt="${escHtml(alt)}" loading="${escHtml(loading)}" decoding="async">`;
+}
+
+function posterPlaceholderFor(img) {
+  return img?.parentElement?.querySelector('.poster-placeholder, .result-poster-placeholder, .winner-poster-ph') ?? null;
+}
+
+function parsePosterSources(img) {
+  try {
+    return JSON.parse(img.dataset.posterSources || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function bindPosterImage(img, placeholder = posterPlaceholderFor(img)) {
+  const sources = uniquePosterSources(parsePosterSources(img), img.getAttribute('src'));
+  let index = 0;
+
+  const showPlaceholder = () => {
+    img.classList.remove('loaded');
+    if (img.classList.contains('winner-poster-img')) img.style.display = 'none';
+    if (placeholder) placeholder.style.display = 'flex';
+  };
+  const showLoaded = () => {
+    img.style.display = 'block';
+    img.classList.add('loaded');
+    if (placeholder) placeholder.style.display = 'none';
+  };
+  const loadAt = nextIndex => {
+    const src = sources[nextIndex];
+    if (!src) {
+      img.removeAttribute('src');
+      img.style.display = 'none';
+      showPlaceholder();
+      return;
+    }
+    index = nextIndex;
+    img.style.display = 'block';
+    showPlaceholder();
+    if (img.getAttribute('src') !== src) img.src = src;
+  };
+
+  img.onload = showLoaded;
+  img.onerror = () => loadAt(index + 1);
+
+  if (!sources.length) {
+    loadAt(0);
+  } else if (img.complete && img.naturalWidth > 0) {
+    showLoaded();
+  } else if (img.complete && img.naturalWidth === 0) {
+    loadAt(1);
+  } else {
+    loadAt(0);
+  }
+}
+
+function setPosterImage(img, movie, placeholder = posterPlaceholderFor(img)) {
+  const sources = posterSourcesFor(movie);
+  img.classList.remove('loaded');
+  img.dataset.posterSources = JSON.stringify(sources);
+  img.alt = movie?.title ? `${movie.title} poster` : 'Movie poster';
+  if (!sources.length) {
+    img.removeAttribute('src');
+    img.style.display = 'none';
+    if (placeholder) placeholder.style.display = 'flex';
+    return;
+  }
+  img.style.display = 'block';
+  if (placeholder) placeholder.style.display = 'flex';
+  img.src = sources[0];
+  bindPosterImage(img, placeholder);
+}
+
+function hydratePosterImages(root = document) {
+  root.querySelectorAll('img[data-poster-sources]').forEach(img => bindPosterImage(img));
 }
 
 // ── AI / LM Studio (Beta) ─────────────────────────────────────
@@ -1505,6 +1641,7 @@ async function tmdbSearchMovie(title, year) {
 }
 
 function formatSuggestedMovie(tmdbData) {
+  const posterSources = uniquePosterSources(tmdbData.poster);
   return {
     id:            `tmdb:${tmdbData.tmdbId}`,
     title:         tmdbData.title,
@@ -1514,7 +1651,8 @@ function formatSuggestedMovie(tmdbData) {
     contentRating: '',
     duration:      '',
     genres:        [],
-    poster:        tmdbData.poster,
+    poster:        posterSources[0] ?? null,
+    posterSources,
     inLibrary:     false,
     tmdbId:        tmdbData.tmdbId,
   };
@@ -1962,7 +2100,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const savedIdx    = sessionStorage.getItem('pf_idx');
           if (savedMovies && savedIdx) {
             try {
-              state.movies     = JSON.parse(savedMovies);
+              state.movies     = normaliseMoviesFromFirebase(JSON.parse(savedMovies));
               state.swipes     = savedSwipes ? JSON.parse(savedSwipes) : {};
               state.currentIdx = parseInt(savedIdx, 10) || 0;
               resumeSwiping();

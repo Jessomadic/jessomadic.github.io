@@ -164,10 +164,13 @@
       background: var(--card2);
     }
     .card-poster img {
+      position: absolute; inset: 0; z-index: 1;
       width: 100%; height: 100%; object-fit: cover; pointer-events: none;
-      display: block;
+      display: block; opacity: 0; transition: opacity .18s ease;
     }
+    .card-poster img.loaded { opacity: 1; }
     .poster-placeholder {
+      position: absolute; inset: 0; z-index: 0;
       width: 100%; height: 100%; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 12px;
       color: var(--subtle); padding: 24px; text-align: center;
@@ -261,8 +264,10 @@
       border-radius: 14px; padding: 12px; transition: all .2s;
     }
     .result-item:hover { border-color: var(--purple); }
-    .result-poster { width: 52px; height: 78px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: var(--card2); }
-    .result-poster-placeholder { width: 52px; height: 78px; border-radius: 8px; flex-shrink: 0; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .result-poster-shell { position: relative; width: 52px; height: 78px; border-radius: 8px; flex-shrink: 0; overflow: hidden; background: var(--card2); }
+    .result-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .18s ease; }
+    .result-poster.loaded { opacity: 1; }
+    .result-poster-placeholder { width: 100%; height: 100%; border-radius: 8px; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 24px; }
     .match-pct {
       font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 100px;
       background: rgba(74,222,128,.15); color: var(--green); border: 1px solid rgba(74,222,128,.3);
@@ -272,16 +277,22 @@
     /* ── Toast ───────────────────────────────────── */
     #toast {
       position: fixed; bottom: 24px; left: 50%;
-      transform: translateX(-50%) translateY(80px);
+      transform: translateX(-50%);
+      display: flex; flex-direction: column-reverse; align-items: center; gap: 8px;
+      z-index: 999; pointer-events: none;
+      width: min(520px, calc(100vw - 32px));
+    }
+    .toast-item {
+      width: fit-content; max-width: 100%;
       background: var(--card2); border: 1px solid rgba(168,85,247,.3);
       color: var(--white); padding: 12px 22px; border-radius: 12px;
-      font-size: 14px; font-weight: 500; z-index: 999;
-      transition: transform .3s ease; white-space: nowrap;
+      font-size: 14px; font-weight: 500; line-height: 1.35; text-align: center;
       box-shadow: 0 8px 32px rgba(0,0,0,.5);
-      pointer-events: none;
+      opacity: 0; transform: translateY(18px);
+      transition: opacity .2s ease, transform .25s ease;
     }
-    #toast.show { transform: translateX(-50%) translateY(0); }
-    #toast.error { background: rgba(248,113,113,.2); border-color: rgba(248,113,113,.4); }
+    .toast-item.show { opacity: 1; transform: translateY(0); }
+    .toast-item.error { background: rgba(248,113,113,.2); border-color: rgba(248,113,113,.4); }
 
     /* ── Spinner ─────────────────────────────────── */
     .spinner {
@@ -386,7 +397,8 @@
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
       max-width: 320px;
     }
-    .winner-poster-img { width: 130px; height: 195px; object-fit: cover; border-radius: 14px; box-shadow: 0 0 48px rgba(168,85,247,.6); }
+    .winner-poster-img { width: 130px; height: 195px; object-fit: cover; border-radius: 14px; box-shadow: 0 0 48px rgba(168,85,247,.6); opacity: 0; transition: opacity .18s ease; }
+    .winner-poster-img.loaded { opacity: 1; }
     .winner-poster-ph  { width: 130px; height: 195px; border-radius: 14px; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 48px; box-shadow: 0 0 40px rgba(168,85,247,.4); }
 
     /* ── AI Mode (Beta) ──────────────────────────── */
