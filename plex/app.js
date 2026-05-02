@@ -56,6 +56,7 @@ const state = {
   swipes:        {},     // { movieId: true|false }
   currentIdx:    0,
   excludedGenres: new Set(),
+  aiMode:        false,  // true when session was created with AI movie picker
 };
 
 // ── ID helpers ───────────────────────────────────────────────
@@ -347,6 +348,7 @@ function formatMovie(m, plexUri, token, tmdbUrl = null) {
   const plexPoster = m.thumb
     ? `${plexUri}${m.thumb}?X-Plex-Token=${token}&width=200&height=300`
     : null;
+  const tmdbId = rawTmdbId(m);
   return {
     id:            String(m.ratingKey),
     title:         m.title ?? 'Unknown',
@@ -357,16 +359,25 @@ function formatMovie(m, plexUri, token, tmdbUrl = null) {
     duration:      m.duration ? `${Math.round(m.duration / 60000)} min` : '',
     genres:        (m.Genre ?? []).map(g => g.tag).slice(0, 3),
     poster:        tmdbUrl ?? plexPoster,
+    inLibrary:     true,
+    tmdbId,
   };
 }
 
+function rawTmdbId(m) {
+  const tmdbGuid = (m.Guid ?? []).find(g => g.id?.startsWith('tmdb://'));
+  const parsed = tmdbGuid ? Number.parseInt(tmdbGuid.id.slice('tmdb://'.length), 10) : null;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 // ── Session helpers ───────────────────────────────────────────
-async function createSession(movies) {
+async function createSession(movies, aiMode = false) {
   const code = generateCode();
   const session = {
     hostId:    state.userId,
     createdAt: Date.now(),
     status:    'lobby',
+    aiMode:    aiMode || null, // null keeps Firebase clean when not in AI mode
     settings:  { threshold: THRESHOLD },
     movies,
     participants: {
@@ -401,14 +412,29 @@ async function joinSession(code) {
 }
 
 // ── Lobby ────────────────────────────────────────────────────
-function showLobby(code, isHost) {
+function showLobby(code, isHost, aiMode = false) {
   state.sessionCode = code;
+  state.aiMode      = !!aiMode;
   sessionStorage.setItem('pf_session', code);
   sessionStorage.setItem('pf_role', state.role);
 
   document.getElementById('lobby-code').textContent = code;
-  document.getElementById('lobby-host-actions').style.display = isHost ? '' : 'none';
-  document.getElementById('lobby-guest-wait').style.display   = isHost ? 'none' : '';
+
+  // Show/hide host actions; swap buttons depending on mode
+  if (isHost) {
+    document.getElementById('lobby-host-actions').style.display = '';
+    document.getElementById('btn-start-swiping').style.display   = aiMode ? 'none' : '';
+    document.getElementById('btn-ai-find-movies').style.display  = aiMode ? '' : 'none';
+  } else {
+    document.getElementById('lobby-host-actions').style.display = 'none';
+  }
+
+  document.getElementById('lobby-guest-wait').style.display = isHost ? 'none' : '';
+
+  // Show AI description section when session uses AI mode
+  const aiSection = document.getElementById('ai-lobby-section');
+  if (aiSection) aiSection.style.display = aiMode ? '' : 'none';
+
   showScreen('screen-lobby');
 
   sessionUnsubscribe = fbListen(`sessions/${code}`, onSessionUpdate);
@@ -432,7 +458,27 @@ function onSessionUpdate(session) {
 
   const activeScreen = document.querySelector('.screen.active')?.id;
 
-  if (activeScreen === 'screen-lobby') updateLobbyParticipants(session.participants);
+  if (activeScreen === 'screen-lobby') {
+    updateLobbyParticipants(session.participants);
+    if (session.aiMode) updateAiDescriptionStatus(session.participants, session.aiDescriptions, session.aiStatus);
+  }
+
+  // AI replay: host can send everyone back to the AI lobby to update
+  // preferences or rerun the model. This must be Firebase-driven so guests
+  // do not remain stranded on results or the wheel.
+  if (session.aiMode && session.status === 'lobby' && activeScreen !== 'screen-lobby') {
+    const overlay = document.getElementById('winner-overlay');
+    if (overlay) overlay.style.display = 'none';
+    wheelMovies = []; wheelRotation = 0; wheelAnimating = false;
+    _latestWheelData = null; _lastAnimatedSpinId = null;
+    if (wheelUnsubscribe) { wheelUnsubscribe(); wheelUnsubscribe = null; }
+    state.movies = normaliseMoviesFromFirebase(session.movies);
+    state.swipes = {};
+    state.currentIdx = 0;
+    clearSwipeProgress();
+    showLobby(state.sessionCode, state.role === 'host', true);
+    return;
+  }
 
   // Lobby → swiping transition (host clicked Start)
   if (session.status === 'swiping' && activeScreen === 'screen-lobby') {
@@ -555,6 +601,9 @@ function buildCard(movie) {
     : '';
   const metaParts = [movie.year, movie.duration, movie.rating ? `⭐ ${movie.rating}` : null].filter(Boolean);
   const badge = movie.contentRating ? `<span class="badge">${escHtml(movie.contentRating)}</span>` : '';
+  const notInLib = movie.inLibrary === false
+    ? `<span class="not-in-library-chip">📥 Not in library</span>`
+    : '';
   const genreList = movie.genres ?? [];
   const genres = genreList.length
     ? `<div class="genre-tags">${genreList.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>`
@@ -580,7 +629,7 @@ function buildCard(movie) {
         <div class="card-title">${escHtml(movie.title)}</div>
         <div class="card-meta">
           ${metaParts.map(p => `<span>${escHtml(String(p))}</span>`).join('<span>·</span>')}
-          ${badge}
+          ${badge}${notInLib}
         </div>
       </div>
       ${movie.summary ? `<p class="card-summary">${escHtml(movie.summary)}</p>` : ''}
@@ -750,7 +799,10 @@ function showResults(session) {
     emoji.textContent    = '🎬';
     headline.textContent = 'You matched a movie!';
     sub.textContent      = `${pCount} ${pCount === 1 ? 'person' : 'people'} · majority agreed`;
-    list.innerHTML       = `
+    const notInLib = movie.inLibrary === false
+      ? `<span class="not-in-library-chip" style="margin-top:4px;display:inline-block">📥 Not in library</span>`
+      : '';
+    list.innerHTML = `
       <div class="result-item">
         ${movie.poster
           ? `<img class="result-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="result-poster-placeholder" style="display:none">🎬</div>`
@@ -759,9 +811,35 @@ function showResults(session) {
           <div style="font-weight:700;font-size:16px;margin-bottom:2px">${escHtml(movie.title)}</div>
           <div class="text-muted" style="font-size:13px">${[movie.year, movie.duration].filter(Boolean).join(' · ')}</div>
           ${(movie.genres ?? []).length ? `<div class="genre-tags" style="margin-top:4px">${movie.genres.map(g => `<span class="genre-tag">${escHtml(g)}</span>`).join('')}</div>` : ''}
+          ${notInLib}
         </div>
         <div class="match-pct">${yesVotes}/${pCount}</div>
       </div>`;
+    // Radarr download button for non-library winner
+    if (movie.inLibrary === false && movie.tmdbId) {
+      const { url, key } = getRadarrConfig();
+      if (isBridgeMode() || (url && key)) {
+        const radarrWrap = document.createElement('div');
+        radarrWrap.className = 'mt-3';
+        const radarrBtn = document.createElement('button');
+        radarrBtn.className   = 'btn btn-secondary';
+        radarrBtn.textContent = '📥 Add to Radarr';
+        radarrBtn.onclick = async () => {
+          radarrBtn.disabled  = true;
+          radarrBtn.innerHTML = '<span class="spinner-sm"></span>';
+          try {
+            const res = await addToRadarr(movie);
+            radarrBtn.textContent = res.alreadyExists ? '✅ Already in Radarr' : '✅ Added to Radarr!';
+          } catch (e) {
+            toast(e.message, 'error');
+            radarrBtn.disabled  = false;
+            radarrBtn.textContent = '📥 Add to Radarr';
+          }
+        };
+        radarrWrap.appendChild(radarrBtn);
+        list.appendChild(radarrWrap);
+      }
+    }
   }
   showScreen('screen-results');
 }
@@ -1057,14 +1135,43 @@ function showWheelWinner(movie) {
       posterImg.style.display = 'none';
       posterPh.style.display  = 'flex';
     };
-    posterImg.src           = movie.poster; // set src AFTER onerror to avoid missing the event
+    posterImg.src           = movie.poster;
     posterImg.style.display = 'block';
     posterPh.style.display  = 'none';
   } else {
     posterImg.style.display = 'none';
     posterPh.style.display  = 'flex';
   }
+
+  // Show Radarr download button if movie isn't in the library and Radarr is configured
+  wireWinnerRadarrBtn(movie);
+
   overlay.style.display = 'flex';
+}
+
+function wireWinnerRadarrBtn(movie) {
+  const btn = document.getElementById('btn-winner-radarr');
+  if (!btn) return;
+  const { url, key } = getRadarrConfig();
+  if (movie.inLibrary === false && movie.tmdbId && (isBridgeMode() || (url && key))) {
+    btn.style.display = '';
+    btn.disabled      = false;
+    btn.textContent   = '📥 Add to Radarr';
+    btn.onclick = async () => {
+      btn.disabled  = true;
+      btn.innerHTML = '<span class="spinner-sm"></span>';
+      try {
+        const res = await addToRadarr(movie);
+        btn.textContent = res.alreadyExists ? '✅ Already in Radarr' : '✅ Added to Radarr!';
+      } catch (e) {
+        toast(e.message, 'error');
+        btn.disabled  = false;
+        btn.textContent = '📥 Add to Radarr';
+      }
+    };
+  } else {
+    btn.style.display = 'none';
+  }
 }
 
 // ── Library setup ─────────────────────────────────────────────
@@ -1196,6 +1303,574 @@ function escHtml(str) {
   return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── AI / LM Studio (Beta) ─────────────────────────────────────
+// The LM Studio endpoint is stored in sessionStorage only — it's a local
+// network URL that must never leave the host's device or be written to Firebase.
+
+function getLmEndpoint() {
+  return sessionStorage.getItem('pf_lm_endpoint') ?? '';
+}
+function setLmEndpoint(url) {
+  if (url) {
+    const endpoint = normalizeEndpoint(url);
+    if (endpoint !== getLmEndpoint()) setLmModelId('');
+    sessionStorage.setItem('pf_lm_endpoint', endpoint);
+    return endpoint;
+  } else {
+    sessionStorage.removeItem('pf_lm_endpoint');
+    setLmModelId('');
+    return '';
+  }
+}
+function getLmModelId() {
+  return sessionStorage.getItem('pf_lm_model_id') ?? '';
+}
+function setLmModelId(modelId) {
+  if (modelId) sessionStorage.setItem('pf_lm_model_id', modelId);
+  else sessionStorage.removeItem('pf_lm_model_id');
+}
+function getAiConnectionMode() {
+  return sessionStorage.getItem('pf_ai_connection_mode') || 'bridge';
+}
+function setAiConnectionMode(mode) {
+  sessionStorage.setItem('pf_ai_connection_mode', mode === 'direct' ? 'direct' : 'bridge');
+}
+function isBridgeMode() {
+  return getAiConnectionMode() === 'bridge';
+}
+function getBridgeUrl() {
+  return sessionStorage.getItem('pf_bridge_url') || 'http://127.0.0.1:8765';
+}
+function setBridgeUrl(url) {
+  const normalized = normalizeEndpoint(url || 'http://127.0.0.1:8765');
+  sessionStorage.setItem('pf_bridge_url', normalized);
+  return normalized;
+}
+function normalizeEndpoint(url) {
+  const raw = String(url || '').trim().replace(/\/$/, '');
+  if (!raw) return '';
+  return /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+}
+
+async function bridgeFetch(path, options = {}) {
+  const baseUrl = getBridgeUrl();
+  if (!baseUrl) throw new Error('PickFlick Bridge URL is required.');
+  const r = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.ok === false) throw new Error(data.error || `Bridge returned HTTP ${r.status}`);
+  return data;
+}
+
+async function testBridgeConnection(url) {
+  const baseUrl = setBridgeUrl(url);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch(`${baseUrl}/health`, { signal: ctrl.signal });
+    clearTimeout(t);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.ok === false) throw new Error(data.error || `HTTP ${r.status}`);
+    return data;
+  } catch (e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('Timed out reaching PickFlick Bridge. Is it running?');
+    throw new Error(`Cannot reach PickFlick Bridge: ${e.message}`);
+  }
+}
+
+async function syncAiStatus(message, running = true) {
+  if (!state.sessionCode) return;
+  const payload = running
+    ? { running: true, message, updatedAt: Date.now() }
+    : null;
+
+  await fbUpdate(`sessions/${state.sessionCode}`, { aiStatus: payload }).catch(() => {});
+}
+
+function chunkArray(arr, size) {
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+  return chunks;
+}
+
+// ── Radarr integration ────────────────────────────────────────
+function getRadarrConfig() {
+  return {
+    url: sessionStorage.getItem('pf_radarr_url') ?? '',
+    key: sessionStorage.getItem('pf_radarr_key') ?? '',
+  };
+}
+function setRadarrConfig(url, key) {
+  if (url) sessionStorage.setItem('pf_radarr_url', url.trim().replace(/\/$/, ''));
+  else     sessionStorage.removeItem('pf_radarr_url');
+  if (key) sessionStorage.setItem('pf_radarr_key', key.trim());
+  else     sessionStorage.removeItem('pf_radarr_key');
+}
+
+async function testRadarrConnection(url, key) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch(`${url}/api/v3/system/status`, {
+      headers: { 'X-Api-Key': key }, signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (r.status === 401) throw new Error('Invalid API key');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    return { ok: true, version: d.version };
+  } catch (e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('Connection timed out');
+    throw new Error(`Cannot reach Radarr: ${e.message}`);
+  }
+}
+
+async function addToRadarr(movie) {
+  if (isBridgeMode()) {
+    const data = await bridgeFetch('/radarr/add', {
+      method: 'POST',
+      body: JSON.stringify({
+        tmdbId: movie.tmdbId,
+        title: movie.title,
+        year: movie.year,
+      }),
+    });
+    return data.alreadyExists ? { alreadyExists: true } : { added: true };
+  }
+  const { url, key } = getRadarrConfig();
+  if (!url || !key) throw new Error('Radarr not configured — enter URL and API key in the library setup.');
+  if (!movie.tmdbId) throw new Error('No TMDB ID for this movie — cannot add to Radarr.');
+  const headers = { 'X-Api-Key': key, 'Content-Type': 'application/json' };
+  const [rfRes, qpRes] = await Promise.all([
+    fetch(`${url}/api/v3/rootfolder`,    { headers }),
+    fetch(`${url}/api/v3/qualityprofile`, { headers }),
+  ]);
+  const rootFolders = rfRes.ok ? await rfRes.json() : [];
+  const profiles    = qpRes.ok ? await qpRes.json() : [];
+  const rootPath    = rootFolders[0]?.path;
+  if (!rootPath) throw new Error('No root folders found in Radarr — check your Radarr setup.');
+  const profileId = profiles[0]?.id ?? 1;
+  const addRes = await fetch(`${url}/api/v3/movie`, {
+    method: 'POST', headers,
+    body: JSON.stringify({
+      tmdbId:           movie.tmdbId,
+      title:            movie.title,
+      qualityProfileId: profileId,
+      rootFolderPath:   rootPath,
+      monitored:        true,
+      addOptions:       { searchForMovie: true },
+    }),
+  });
+  if (addRes.status === 400) {
+    const errBody = await addRes.json().catch(() => []);
+    const msgs    = Array.isArray(errBody) ? errBody.map(e => e.errorMessage) : [errBody.message ?? ''];
+    if (msgs.some(m => /already/i.test(m))) return { alreadyExists: true };
+    throw new Error(msgs.join(', ') || `Radarr error ${addRes.status}`);
+  }
+  if (!addRes.ok) throw new Error(`Radarr returned HTTP ${addRes.status}`);
+  return { added: true };
+}
+
+// TMDB movie search — fetches metadata for AI-suggested non-library films
+async function tmdbSearchMovie(title, year) {
+  const apiKey = window.tmdbApiKey;
+  if (!apiKey || apiKey === 'YOUR_TMDB_API_KEY') return null;
+  try {
+    const yearParam = year ? `&year=${year}` : '';
+    const r = await fetch(
+      `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(title)}${yearParam}&language=en-US&page=1`
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    const m = d.results?.[0];
+    if (!m) return null;
+    return {
+      tmdbId:  m.id,
+      title:   m.title,
+      year:    m.release_date?.slice(0, 4) ?? String(year ?? ''),
+      summary: (m.overview ?? '').slice(0, 220),
+      rating:  m.vote_average ? parseFloat(m.vote_average).toFixed(1) : null,
+      poster:  m.poster_path ? `${TMDB_IMAGE_BASE}${m.poster_path}` : null,
+    };
+  } catch { return null; }
+}
+
+function formatSuggestedMovie(tmdbData) {
+  return {
+    id:            `tmdb:${tmdbData.tmdbId}`,
+    title:         tmdbData.title,
+    year:          tmdbData.year,
+    summary:       tmdbData.summary,
+    rating:        tmdbData.rating,
+    contentRating: '',
+    duration:      '',
+    genres:        [],
+    poster:        tmdbData.poster,
+    inLibrary:     false,
+    tmdbId:        tmdbData.tmdbId,
+  };
+}
+
+async function testLmConnection(endpoint) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch(`${endpoint}/v1/models`, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    return { ok: true, models: d.data ?? [] };
+  } catch (e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('Timed out — is LM Studio running and reachable from this browser?');
+    throw new Error(`Cannot reach LM Studio: ${e.message}. Enable CORS in LM Studio Settings → Server.`);
+  }
+}
+
+// Build a compact movie catalog for LLM context (id, title, year, genres, short summary).
+function buildAiCatalog(rawMovies) {
+  return rawMovies.map(m => ({
+    id:      String(m.ratingKey),
+    t:       m.title ?? '',
+    y:       m.year  ?? '',
+    g:       (m.Genre ?? []).map(g => g.tag).slice(0, 4),
+    s:       (m.summary ?? '').slice(0, 120),
+    r:       m.rating ? parseFloat(m.rating).toFixed(1) : null,
+    dur:     m.duration ? Math.round(m.duration / 60000) : null,
+  }));
+}
+
+function buildAiSystemPrompt() {
+  return `You are a movie curator helping a group of friends pick movies for their movie night from a Plex library.
+
+You will receive:
+1. Each participant's description of what mood, tone, or type of film they want tonight
+2. A JSON catalog of movies they already own: id, t=title, y=year, g=genres, s=summary, r=rating, dur=duration in minutes
+
+Your task has TWO parts:
+
+PART 1 — "selected": Pick 20–30 movies from the catalog that best match everyone's preferences.
+- Use the exact "id" field from the catalog
+- Balance every participant's mood and tone preferences
+- Favour variety: mix genres, eras, energy levels when tastes differ
+
+PART 2 — "suggestions": Recommend up to 8 real movies NOT in the catalog that the group would love.
+- Draw from your training knowledge of real films
+- Match the same mood/vibe the participants described
+- Be accurate — only suggest real films with the correct title and year
+- These will be offered as Radarr downloads so accuracy matters
+
+CRITICAL: Respond ONLY with valid JSON, no markdown, no code fences, no extra text:
+{"selected":["id1","id2",...],"suggestions":[{"title":"Movie Name","year":2019},{"title":"Another Film","year":2015}],"reason":"One sentence"}`;
+}
+
+function buildAiUserPrompt(catalog, descriptions) {
+  const prefs = Object.values(descriptions)
+    .filter(d => d?.text?.trim())
+    .map(d => `${d.name}: "${d.text.trim()}"`)
+    .join('\n');
+
+  return `WHAT EVERYONE WANTS TONIGHT:\n${prefs}\n\nMOVIES ALREADY IN PLEX:\n${JSON.stringify(catalog)}`;
+}
+
+async function callLmStudio(endpoint, modelId, systemPrompt, userPrompt) {
+  if (isBridgeMode()) {
+    const data = await bridgeFetch('/lm/chat', {
+      method: 'POST',
+      body: JSON.stringify({ modelId, systemPrompt, userPrompt }),
+    });
+    return data.content ?? '';
+  }
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 90000); // 90s for slow local models
+  try {
+    const r = await fetch(`${endpoint}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: modelId,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: userPrompt   },
+        ],
+        temperature: 0.25,
+        max_tokens:  1000,
+        stream:      false,
+      }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      throw new Error(`LM Studio returned HTTP ${r.status}: ${body.slice(0, 200)}`);
+    }
+    const data = await r.json();
+    return data.choices?.[0]?.message?.content ?? '';
+  } catch (e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('LM Studio took too long (>90s). Try a smaller/faster model or reduce the library size.');
+    throw e;
+  }
+}
+
+function parseLmResponse(text) {
+  let t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  const match = t.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('AI response did not contain JSON. Got: ' + t.slice(0, 300));
+  const parsed = JSON.parse(match[0]);
+  if (!Array.isArray(parsed.selected)) throw new Error('AI response missing "selected" array. Got: ' + t.slice(0, 300));
+  if (!Array.isArray(parsed.suggestions)) parsed.suggestions = [];
+  return parsed;
+}
+
+async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setStatus) {
+  const catalog = buildAiCatalog(pool);
+  const chunks = chunkArray(catalog, 250);
+  const selectedIds = new Set();
+  const suggestions = [];
+  const reasons = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    await setStatus(`Reading library chunk ${i + 1}/${chunks.length} (${chunks[i].length} movies)...`);
+
+    const raw = await callLmStudio(
+      endpoint,
+      modelId,
+      buildAiSystemPrompt(),
+      buildAiUserPrompt(chunks[i], descriptions)
+    );
+
+    const parsed = parseLmResponse(raw);
+    parsed.selected.slice(0, 14).forEach(id => selectedIds.add(String(id)));
+    (parsed.suggestions ?? []).slice(0, 8).forEach(s => suggestions.push(s));
+    if (parsed.reason) reasons.push(parsed.reason);
+  }
+
+  const candidates = catalog.filter(m => selectedIds.has(String(m.id)));
+
+  if (chunks.length <= 1 || candidates.length <= MOVIES_COUNT) {
+    return {
+      selected: candidates.slice(0, MOVIES_COUNT).map(m => String(m.id)),
+      suggestions: suggestions.slice(0, 8),
+      reason: reasons[0] ?? 'AI matched the group preferences.',
+    };
+  }
+
+  await setStatus(`Narrowing ${candidates.length} candidates into the final deck...`);
+
+  const finalRaw = await callLmStudio(
+    endpoint,
+    modelId,
+    buildAiSystemPrompt(),
+    buildAiUserPrompt(candidates, descriptions)
+  );
+  const finalParsed = parseLmResponse(finalRaw);
+
+  return {
+    selected: finalParsed.selected,
+    suggestions: [...(finalParsed.suggestions ?? []), ...suggestions].slice(0, 8),
+    reason: finalParsed.reason ?? reasons[0] ?? 'AI matched the group preferences.',
+  };
+}
+
+async function runAiPick() {
+  return runAiPickHardened();
+}
+
+async function runAiPickHardened() {
+  if (state.role !== 'host') {
+    toast('Waiting for the host to find movies...', 'info');
+    return;
+  }
+  const endpoint = isBridgeMode() ? getBridgeUrl() : getLmEndpoint();
+  if (!endpoint) {
+    toast(isBridgeMode()
+      ? 'PickFlick Bridge URL not set - run the bridge setup first.'
+      : 'LM Studio URL not set - configure it in the library setup.', 'error');
+    return;
+  }
+  if (!state.plexLibrary?.key || !state.plexServerUri || !state.plexToken) {
+    toast('Plex connection lost - please start a new session.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-ai-find-movies');
+  const statusEl = document.getElementById('ai-pick-status-text');
+  const statusRow = document.getElementById('ai-pick-status-row');
+  if (btn) btn.disabled = true;
+  if (statusRow) statusRow.style.display = 'flex';
+
+  const setStatus = async msg => {
+    if (statusEl) statusEl.textContent = msg;
+    await syncAiStatus(msg, true);
+  };
+
+  try {
+    await setStatus('Reading everyone\'s preferences...');
+
+    const sessionBefore = await fbGet(`sessions/${state.sessionCode}`);
+    const participants = Object.values(sessionBefore?.participants ?? {}).filter(Boolean);
+    const descriptions = sessionBefore?.aiDescriptions ?? {};
+    const descCount = Object.values(descriptions).filter(d => d?.text?.trim()).length;
+
+    if (descCount === 0) {
+      throw new Error('Nobody has submitted their preferences yet! Ask participants to describe what they want to watch.');
+    }
+    if (participants.length > descCount) {
+      const ok = confirm(`Only ${descCount}/${participants.length} people submitted preferences. Run AI anyway?`);
+      if (!ok) throw new Error('AI pick cancelled - waiting for more preferences.');
+    }
+
+    await setStatus(isBridgeMode() ? 'Checking PickFlick Bridge...' : 'Checking LM Studio model...');
+    let modelId = getLmModelId();
+    if (isBridgeMode()) {
+      const health = await testBridgeConnection(endpoint);
+      modelId = health.config?.lmStudio?.modelId ?? '';
+      if (modelId) setLmModelId(modelId);
+    } else if (!modelId) {
+      const { models } = await testLmConnection(endpoint);
+      modelId = models[0]?.id ?? '';
+      if (modelId) setLmModelId(modelId);
+    }
+    if (!modelId) {
+      throw new Error(isBridgeMode()
+        ? 'No LM Studio model is selected in PickFlick Bridge. Open bridge setup, test LM Studio, choose a model, and save.'
+        : 'No LM Studio model is loaded. Load a model, test the connection, and try again.');
+    }
+
+    await setStatus('Fetching your Plex library...');
+    const rawAll = await plexGetMovies(state.plexServerUri, state.plexLibrary.key, null, state.plexToken);
+    const byYear = applyYearFilter(rawAll);
+    const pool = applyDurationFilter(byYear, getMaxDurationMs());
+
+    if (!pool.length) throw new Error('No movies available with current filters. Adjust year/duration and try again.');
+
+    await setStatus(`Asking AI to pick from ${pool.length} movies based on ${descCount} preference${descCount !== 1 ? 's' : ''}...`);
+    const parsed = await runChunkedAiSelection(endpoint, modelId, pool, descriptions, setStatus);
+    const selected = new Set(parsed.selected.map(String));
+
+    await setStatus('AI picked. Fetching metadata and posters...');
+    let pickedRaw = pool.filter(m => selected.has(String(m.ratingKey)));
+
+    const aiMatchedCount = pickedRaw.length;
+    if (pickedRaw.length < 5) {
+      const extras = shuffle(pool.filter(m => !selected.has(String(m.ratingKey))));
+      pickedRaw = [...pickedRaw, ...extras].slice(0, MOVIES_COUNT);
+      toast(`AI matched ${aiMatchedCount} library film${aiMatchedCount !== 1 ? 's' : ''} - padded to fill the deck.`, 'info');
+    } else {
+      pickedRaw = pickedRaw.slice(0, MOVIES_COUNT);
+    }
+
+    const tmdbPosters = await fetchTmdbPosters(pickedRaw);
+    const libraryMovies = pickedRaw.map(m => formatMovie(
+      m, state.plexImageUri, state.plexToken, tmdbPosters[String(m.ratingKey)] ?? null
+    ));
+
+    const existingTitles = new Set(pool.map(m => (m.title ?? '').toLowerCase()));
+    const existingTmdbIds = new Set(pool.map(rawTmdbId).filter(id => id !== null));
+    const suggestionsSeen = new Set();
+    const suggestionsRaw = (parsed.suggestions ?? [])
+      .filter(s => {
+        const key = `${String(s?.title || '').trim().toLowerCase()}|${String(s?.year || '').trim()}`;
+        if (!s?.title || suggestionsSeen.has(key)) return false;
+        suggestionsSeen.add(key);
+        return true;
+      })
+      .slice(0, 8);
+    const suggestionsResolved = await Promise.allSettled(
+      suggestionsRaw
+        .filter(s => !existingTitles.has((s.title ?? '').trim().toLowerCase()))
+        .map(s => tmdbSearchMovie(s.title, s.year))
+    );
+    const suggestedTmdbIds = new Set();
+    const suggestedMovies = suggestionsResolved
+      .filter(r => r.status === 'fulfilled' && r.value && !existingTmdbIds.has(r.value.tmdbId))
+      .filter(r => {
+        if (suggestedTmdbIds.has(r.value.tmdbId)) return false;
+        suggestedTmdbIds.add(r.value.tmdbId);
+        return true;
+      })
+      .map(r => formatSuggestedMovie(r.value));
+
+    const newMovies = [...libraryMovies, ...suggestedMovies];
+    if (parsed.reason) toast(`AI: ${parsed.reason}`, 'info');
+
+    const session = await fbGet(`sessions/${state.sessionCode}`);
+    const updates = {
+      [`sessions/${state.sessionCode}/movies`]: newMovies,
+      [`sessions/${state.sessionCode}/swipes`]: null,
+      [`sessions/${state.sessionCode}/wheel`]: null,
+      [`sessions/${state.sessionCode}/aiStatus`]: null,
+      [`sessions/${state.sessionCode}/status`]: 'swiping',
+    };
+    Object.keys(session?.participants ?? {}).forEach(uid => {
+      updates[`sessions/${state.sessionCode}/participants/${uid}/done`] = false;
+    });
+    await db.ref('/').update(updates);
+  } catch (e) {
+    await syncAiStatus(e.message, false);
+    if (statusRow) statusRow.style.display = 'none';
+    if (btn) btn.disabled = false;
+    toast(e.message, 'error');
+  }
+}
+
+function updateAiDescriptionStatus(participants, descriptions, aiStatus = null) {
+  const statusList = document.getElementById('ai-desc-status-list');
+  const statusDiv  = document.getElementById('ai-desc-status');
+  const statusRow  = document.getElementById('ai-pick-status-row');
+  const statusText = document.getElementById('ai-pick-status-text');
+  const aiBtn      = document.getElementById('btn-ai-find-movies');
+  if (!statusList || !statusDiv) return;
+  const parts = Object.entries(participants ?? {}).filter(([, p]) => p);
+  if (!parts.length) { statusDiv.style.display = 'none'; return; }
+  const descs = descriptions ?? {};
+  const submittedCount = parts.filter(([uid]) => !!descs[uid]?.text?.trim()).length;
+  statusList.innerHTML = parts.map(([uid, p]) => {
+    const submitted = !!descs[uid]?.text?.trim();
+    return `<div class="chip">
+      <div class="dot ${submitted ? 'done' : 'waiting'}"></div>
+      ${escHtml(p.name)}${submitted ? ' ✓' : ' …'}
+    </div>`;
+  }).join('');
+  statusDiv.style.display = '';
+
+  if (aiBtn && state.role === 'host' && !aiStatus?.running) {
+    aiBtn.disabled = submittedCount === 0;
+  }
+
+  if (statusRow && statusText) {
+    if (aiStatus?.running) {
+      statusText.textContent = aiStatus.message ?? 'AI is finding movies...';
+      statusRow.style.display = 'flex';
+      if (aiBtn) aiBtn.disabled = true;
+    } else {
+      statusRow.style.display = 'none';
+    }
+  }
+}
+
+function updateAiConnectionUi() {
+  const mode = getAiConnectionMode();
+  const bridgeBtn = document.getElementById('ai-mode-bridge-btn');
+  const directBtn = document.getElementById('ai-mode-direct-btn');
+  const bridgePanel = document.getElementById('bridge-config-panel');
+  const directPanel = document.getElementById('direct-config-panel');
+  const bridgeInput = document.getElementById('bridge-url-input');
+  if (bridgeBtn) bridgeBtn.classList.toggle('active', mode === 'bridge');
+  if (directBtn) directBtn.classList.toggle('active', mode === 'direct');
+  if (bridgePanel) bridgePanel.style.display = mode === 'bridge' ? 'flex' : 'none';
+  if (directPanel) directPanel.style.display = mode === 'direct' ? 'flex' : 'none';
+  if (bridgeInput && !bridgeInput.value) bridgeInput.value = getBridgeUrl();
+}
+
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   if (!initFirebase()) {
@@ -1225,7 +1900,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!session) { clearSession(); return; }
       state.movies = normaliseMoviesFromFirebase(session.movies);
       if (session.status === 'lobby') {
-        showLobby(savedCode, savedRole === 'host');
+        showLobby(savedCode, savedRole === 'host', session.aiMode ?? false);
         // showLobby already calls fbListen(onSessionUpdate)
         return;
       }
@@ -1310,10 +1985,10 @@ function wireAllHandlers() {
     state.userName = name;
     setBtn('btn-join-confirm', true);
     try {
-      await joinSession(state.sessionCode);
+      const session = await joinSession(state.sessionCode);
       sessionStorage.setItem('pf_session', state.sessionCode);
       sessionStorage.setItem('pf_role', 'guest');
-      showLobby(state.sessionCode, false);
+      showLobby(state.sessionCode, false, session.aiMode ?? false);
     } catch (e) {
       toast(e.message, 'error');
     } finally {
@@ -1469,6 +2144,124 @@ function wireAllHandlers() {
   // btn-winner-play-again is wired to startNewRound above (results section);
   // the winner overlay shares the same handler.
   document.getElementById('btn-winner-leave').onclick = clearSession;
+
+  // ── AI Mode ──
+  // AI toggle (library screen)
+  document.getElementById('ai-toggle-row').onclick = () => {
+    state.aiMode = !state.aiMode;
+    const row   = document.getElementById('ai-toggle-row');
+    const track = document.getElementById('ai-toggle-track');
+    const sec   = document.getElementById('ai-config-section');
+    row.setAttribute('aria-pressed', String(state.aiMode));
+    track.classList.toggle('on', state.aiMode);
+    sec.style.display = state.aiMode ? 'flex' : 'none';
+    if (state.aiMode) {
+      sec.style.flexDirection = 'column';
+      updateAiConnectionUi();
+      document.getElementById('bridge-url-input').value = getBridgeUrl();
+      const savedLm     = getLmEndpoint();
+      const savedRadarr = getRadarrConfig();
+      if (savedLm)           document.getElementById('lm-endpoint-input').value  = savedLm;
+      if (savedRadarr.url)   document.getElementById('radarr-url-input').value   = savedRadarr.url;
+      if (savedRadarr.key)   document.getElementById('radarr-key-input').value   = savedRadarr.key;
+    }
+  };
+
+  document.getElementById('ai-mode-bridge-btn').onclick = () => {
+    setAiConnectionMode('bridge');
+    updateAiConnectionUi();
+  };
+  document.getElementById('ai-mode-direct-btn').onclick = () => {
+    setAiConnectionMode('direct');
+    updateAiConnectionUi();
+  };
+
+  document.getElementById('btn-test-bridge').onclick = async () => {
+    const url = document.getElementById('bridge-url-input').value.trim();
+    if (!url) { toast('Enter your PickFlick Bridge URL first', 'error'); return; }
+    const result = document.getElementById('bridge-test-result');
+    result.style.display = 'block';
+    result.className = '';
+    result.textContent = 'Testing...';
+    try {
+      const health = await testBridgeConnection(url);
+      const lm = health.config?.lmStudio ?? {};
+      const radarr = health.config?.radarr ?? {};
+      if (lm.modelId) setLmModelId(lm.modelId);
+      result.className = lm.configured ? 'ok' : 'error';
+      result.textContent = lm.configured
+        ? `Bridge connected - LM model: ${lm.modelId}${radarr.configured ? ' - Radarr ready' : ' - Radarr not configured'}`
+        : 'Bridge connected, but LM Studio is not configured. Open the bridge setup page and choose a model.';
+    } catch (e) {
+      result.className = 'error';
+      result.textContent = e.message;
+    }
+  };
+
+  // Test LM Studio connection
+  document.getElementById('btn-test-lm').onclick = async () => {
+    const url = document.getElementById('lm-endpoint-input').value.trim();
+    if (!url) { toast('Enter an LM Studio URL first', 'error'); return; }
+    const endpoint = setLmEndpoint(url);
+    const result = document.getElementById('lm-test-result');
+    result.style.display = 'block';
+    result.className     = '';
+    result.textContent   = '🔌 Testing…';
+    try {
+      const { models } = await testLmConnection(endpoint);
+      const modelId = models[0]?.id ?? '';
+      if (modelId) setLmModelId(modelId);
+      else setLmModelId('');
+      result.className = modelId ? 'ok' : 'error';
+      result.textContent = modelId
+        ? `Connected - ${modelId}`
+        : 'Connected, but no model is loaded';
+    } catch (e) {
+      result.className   = 'error';
+      result.textContent = `❌ ${e.message}`;
+    }
+  };
+
+  // Test Radarr connection
+  document.getElementById('btn-test-radarr').onclick = async () => {
+    const url = document.getElementById('radarr-url-input').value.trim();
+    const key = document.getElementById('radarr-key-input').value.trim();
+    if (!url || !key) { toast('Enter Radarr URL and API key first', 'error'); return; }
+    setRadarrConfig(normalizeEndpoint(url), key);
+    const result = document.getElementById('radarr-test-result');
+    result.style.display = 'block';
+    result.className     = '';
+    result.textContent   = '📡 Testing…';
+    try {
+      const { version } = await testRadarrConnection(normalizeEndpoint(url), key);
+      result.className   = 'ok';
+      result.textContent = `✅ Connected · Radarr v${version}`;
+    } catch (e) {
+      result.className   = 'error';
+      result.textContent = `❌ ${e.message}`;
+    }
+  };
+
+  // Submit AI description (participants in lobby)
+  document.getElementById('btn-submit-ai-desc').onclick = async () => {
+    const text = document.getElementById('ai-desc-input').value.trim();
+    if (!text) { toast('Describe what you want to watch first', 'error'); return; }
+    const btn = document.getElementById('btn-submit-ai-desc');
+    btn.disabled = true;
+    try {
+      await fbSet(
+        `sessions/${state.sessionCode}/aiDescriptions/${state.userId}`,
+        { name: state.userName, text }
+      );
+      document.getElementById('ai-desc-submitted-notice').style.display = 'flex';
+    } catch (e) {
+      toast('Failed to save preferences — check your connection.', 'error');
+      btn.disabled = false;
+    }
+  };
+
+  // Host "Find Movies with AI" button
+  document.getElementById('btn-ai-find-movies').onclick = runAiPick;
 }
 
 function wireLibraryForm(servers, initialLibs) {
@@ -1518,31 +2311,61 @@ function wireLibraryForm(servers, initialLibs) {
 
   // ── Create session ──
   document.getElementById('btn-create-session').onclick = async () => {
-    const sectionKey     = document.getElementById('select-library').value;
-    const genreFastKey   = document.getElementById('select-genre').value || null;
+    const sectionKey   = document.getElementById('select-library').value;
+    const genreFastKey = document.getElementById('select-genre').value || null;
+
+    // Validate AI mode before locking down the UI
+    if (state.aiMode) {
+      if (isBridgeMode()) {
+        const bridgeUrl = document.getElementById('bridge-url-input').value.trim();
+        if (!bridgeUrl) { toast('Enter your PickFlick Bridge URL to use AI Mode', 'error'); return; }
+        try {
+          const health = await testBridgeConnection(bridgeUrl);
+          const modelId = health.config?.lmStudio?.modelId ?? '';
+          if (!modelId) {
+            toast('Open PickFlick Bridge setup, test LM Studio, choose a model, and save it.', 'error');
+            return;
+          }
+          setLmModelId(modelId);
+        } catch (e) {
+          toast(e.message, 'error');
+          return;
+        }
+      } else {
+        const lmUrl = document.getElementById('lm-endpoint-input').value.trim();
+        if (!lmUrl) { toast('Enter your LM Studio URL to use AI Mode', 'error'); return; }
+        setLmEndpoint(lmUrl);
+        // Save Radarr config if provided (optional)
+        const radarrUrl = document.getElementById('radarr-url-input').value.trim();
+        const radarrKey = document.getElementById('radarr-key-input').value.trim();
+        if (radarrUrl && radarrKey) setRadarrConfig(radarrUrl, radarrKey);
+      }
+    }
 
     setBtn('btn-create-session', true);
     try {
-      const raw        = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
-      const byYear     = applyYearFilter(raw);
-      const byDur      = applyDurationFilter(byYear, getMaxDurationMs());
-      const filtered   = applyExcludeGenreFilter(byDur);
+      const raw      = await plexGetMovies(state.plexServerUri, sectionKey, genreFastKey, state.plexToken);
+      const byYear   = applyYearFilter(raw);
+      const byDur    = applyDurationFilter(byYear, getMaxDurationMs());
+      const filtered = applyExcludeGenreFilter(byDur);
       if (!filtered.length) throw new Error('No movies found for that selection. Try adjusting the filters.');
 
-      const picked     = pickMovies(filtered, MOVIES_COUNT);
-      // Fetch TMDB poster URLs in parallel for all picked movies.
-      // Falls back to Plex relay URL per-movie if TMDB is unconfigured or lookup fails.
+      // In AI mode we create the session with a placeholder pool (the AI will
+      // replace it when the host clicks "Find Movies with AI"). We still need
+      // some movies in Firebase so guests can join — use a random sample.
+      const picked      = pickMovies(filtered, MOVIES_COUNT);
       const tmdbPosters = await fetchTmdbPosters(picked);
-      state.movies  = picked.map(m => formatMovie(
+      state.movies = picked.map(m => formatMovie(
         m, state.plexImageUri, state.plexToken, tmdbPosters[String(m.ratingKey)] ?? null
       ));
 
-      const code    = await createSession(state.movies);
+      const code = await createSession(state.movies, state.aiMode);
       state.sessionCode = code;
 
-      showLobby(code, true);
+      showLobby(code, true, state.aiMode);
+      const modeLabel = state.aiMode ? 'AI Mode · ' : '';
       document.getElementById('lobby-movie-info').textContent =
-        `${state.movies.length} movies · ${state.plexLibrary?.title ?? 'your library'}`;
+        `${modeLabel}${state.movies.length} movies · ${state.plexLibrary?.title ?? 'your library'}`;
     } catch (e) {
       if (e.message === 'PLEX_AUTH_EXPIRED') {
         toast('Plex sign-in expired — please reconnect.', 'error');
@@ -1563,6 +2386,25 @@ function wireLibraryForm(servers, initialLibs) {
 async function startNewRound() {
   if (state.role !== 'host') {
     toast('Ask the host to start a new set.', 'info');
+    return;
+  }
+  if (state.aiMode) {
+    await fbUpdate(`sessions/${state.sessionCode}`, {
+      status: 'lobby',
+      swipes: null,
+      wheel: null,
+      aiStatus: null,
+    });
+
+    const overlay = document.getElementById('winner-overlay');
+    if (overlay) overlay.style.display = 'none';
+    wheelMovies = []; wheelRotation = 0; wheelAnimating = false;
+    _latestWheelData = null; _lastAnimatedSpinId = null;
+    if (wheelUnsubscribe) { wheelUnsubscribe(); wheelUnsubscribe = null; }
+    if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
+
+    showLobby(state.sessionCode, state.role === 'host', true);
+    toast('Back to AI lobby - update preferences or find movies again.', 'info');
     return;
   }
   if (!state.plexLibrary?.key || !state.plexServerUri || !state.plexToken) {
@@ -1654,6 +2496,7 @@ function clearSession() {
   state.plexLibrary    = null;
   state.userName       = null;
   state.role           = null;
+  state.aiMode         = false;
   state.excludedGenres.clear();
   document.querySelectorAll('#exclude-genre-chips .genre-chip.excluded')
     .forEach(chip => chip.classList.remove('excluded'));

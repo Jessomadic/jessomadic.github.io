@@ -388,6 +388,62 @@
     }
     .winner-poster-img { width: 130px; height: 195px; object-fit: cover; border-radius: 14px; box-shadow: 0 0 48px rgba(168,85,247,.6); }
     .winner-poster-ph  { width: 130px; height: 195px; border-radius: 14px; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 48px; box-shadow: 0 0 40px rgba(168,85,247,.4); }
+
+    /* ── AI Mode (Beta) ──────────────────────────── */
+    .beta-badge {
+      display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: .06em;
+      padding: 2px 7px; border-radius: 999px; text-transform: uppercase;
+      background: rgba(168,85,247,.22); color: var(--purple); vertical-align: middle;
+    }
+    .ai-toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; padding: 4px 0; -webkit-tap-highlight-color: transparent;
+    }
+    .ai-toggle-track {
+      width: 40px; height: 22px; border-radius: 11px; flex-shrink: 0;
+      background: var(--card2); border: 1.5px solid rgba(168,85,247,.25);
+      position: relative; transition: background .2s, border-color .2s;
+    }
+    .ai-toggle-track.on { background: rgba(168,85,247,.3); border-color: var(--purple); }
+    .ai-toggle-thumb {
+      position: absolute; top: 3px; left: 3px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--muted); transition: left .2s, background .2s;
+    }
+    .ai-toggle-track.on .ai-toggle-thumb { left: 21px; background: var(--purple); }
+    .ai-config-card {
+      margin-top: 6px; background: rgba(168,85,247,.05);
+      border: 1px solid rgba(168,85,247,.15); border-radius: 12px; padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .ai-lobby-card {
+      background: rgba(168,85,247,.06); border: 1px solid rgba(168,85,247,.2);
+      border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      margin-top: 12px;
+    }
+    .ai-lobby-card textarea.input {
+      resize: vertical; min-height: 80px; font-size: 14px; line-height: 1.55;
+    }
+    .ai-mode-select {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .ai-mode-select button {
+      padding: 9px 10px; border-radius: 8px; border: 1px solid rgba(168,85,247,.18);
+      background: var(--card2); color: var(--muted); font-size: 13px; font-weight: 700;
+    }
+    .ai-mode-select button.active {
+      background: rgba(168,85,247,.18); color: var(--white); border-color: rgba(168,85,247,.45);
+    }
+    #bridge-test-result, #lm-test-result, #radarr-test-result {
+      font-size: 12px; padding: 10px 14px; border-radius: 10px; line-height: 1.5;
+    }
+    #bridge-test-result.ok, #lm-test-result.ok, #radarr-test-result.ok       { background: rgba(74,222,128,.1);   color: var(--green); }
+    #bridge-test-result.error, #lm-test-result.error, #radarr-test-result.error  { background: rgba(248,113,113,.12); color: var(--red);   }
+    .not-in-library-chip {
+      background: rgba(6,182,212,.12); border: 1px solid rgba(6,182,212,.25);
+      color: var(--teal); border-radius: 6px; padding: 1px 6px;
+      font-size: 11px; font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -573,6 +629,73 @@
             <div id="exclude-genre-chips" class="genre-chip-grid"></div>
           </div>
           <div id="movie-count-hint" class="text-muted text-center" style="font-size:13px"></div>
+
+          <!-- ── AI Mode (Beta) ── -->
+          <div class="divider" style="margin:4px 0"></div>
+          <button type="button" class="ai-toggle-row" id="ai-toggle-row" aria-pressed="false" style="width:100%;background:none;border:0;text-align:left;font:inherit;color:inherit">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--white);display:flex;align-items:center;gap:6px">
+                🧠 AI Mode <span class="beta-badge">Beta</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">Let everyone describe what they want to watch</div>
+            </div>
+            <div class="ai-toggle-track" id="ai-toggle-track">
+              <div class="ai-toggle-thumb"></div>
+            </div>
+          </button>
+          <div class="ai-config-card" id="ai-config-section" style="display:none">
+            <div style="font-size:12px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Connection Mode</div>
+            <div class="ai-mode-select" role="group" aria-label="AI connection mode">
+              <button type="button" id="ai-mode-bridge-btn" class="active">Bridge</button>
+              <button type="button" id="ai-mode-direct-btn">Direct</button>
+            </div>
+            <div id="bridge-config-panel" style="display:flex;flex-direction:column;gap:10px">
+              <div class="input-group" style="margin-bottom:0">
+                <label>PickFlick Bridge URL</label>
+                <input class="input" id="bridge-url-input" type="url" placeholder="http://127.0.0.1:8765" autocomplete="off" style="font-size:14px">
+              </div>
+              <button class="btn btn-secondary" id="btn-test-bridge" style="padding:10px 16px">Test Bridge</button>
+              <div id="bridge-test-result" style="display:none"></div>
+              <p style="font-size:11px;color:var(--muted);line-height:1.65">
+                Recommended. Run PickFlick Bridge on the host Windows machine, then use its setup page to choose the LM Studio model and Radarr defaults.
+              </p>
+            </div>
+            <div id="direct-config-panel" style="display:none;flex-direction:column;gap:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">LM Studio</div>
+            <div class="input-group" style="margin-bottom:0">
+              <label>URL</label>
+              <input class="input" id="lm-endpoint-input" type="url" placeholder="http://192.168.x.x:1234" autocomplete="off" style="font-size:14px">
+            </div>
+            <button class="btn btn-secondary" id="btn-test-lm" style="padding:10px 16px">🔌 Test LM Studio</button>
+            <div id="lm-test-result" style="display:none"></div>
+            <p style="font-size:11px;color:var(--muted);line-height:1.65">
+              Because this page is served over HTTPS, local/private-network URLs may also need HTTPS or browser private-network access permissions.
+            </p>
+            <p style="font-size:11px;color:var(--muted);line-height:1.65">
+              LM Studio must have <strong style="color:var(--subtle)">CORS enabled</strong> (Settings → Server) and a model loaded.
+              URL stays on this device — never shared.
+            </p>
+
+            <div class="divider" style="margin:4px 0"></div>
+            <div style="font-size:12px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">
+              Radarr <span style="font-size:10px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(optional — download AI-suggested films)</span>
+            </div>
+            <div class="input-group" style="margin-bottom:8px">
+              <label>Radarr URL</label>
+              <input class="input" id="radarr-url-input" type="url" placeholder="http://192.168.x.x:7878" style="font-size:14px">
+            </div>
+            <div class="input-group" style="margin-bottom:0">
+              <label>API Key</label>
+              <input class="input" id="radarr-key-input" type="password" placeholder="Settings → General → API Key" style="font-size:14px">
+            </div>
+            <button class="btn btn-secondary" id="btn-test-radarr" style="padding:10px 16px">📡 Test Radarr</button>
+            <div id="radarr-test-result" style="display:none"></div>
+            <p style="font-size:11px;color:var(--muted);line-height:1.65">
+              Radarr is optional. From GitHub Pages, local Radarr URLs may require HTTPS, CORS, or a local proxy to work in your browser.
+            </p>
+            </div>
+          </div>
+
           <button class="btn btn-primary" id="btn-create-session">🚀 Create Session</button>
         </div>
       </div>
@@ -601,6 +724,7 @@
 
         <div id="lobby-host-actions" style="display:none">
           <button class="btn btn-primary" id="btn-start-swiping">🎬 Start Swiping</button>
+          <button class="btn btn-primary" id="btn-ai-find-movies" style="display:none;background:linear-gradient(135deg,#7c3aed,#a855f7)">🧠 Find Movies with AI</button>
           <p class="text-muted mt-2" id="start-hint">Waiting for others to join… (you can start alone)</p>
         </div>
         <div id="lobby-guest-wait" style="display:none">
@@ -608,6 +732,38 @@
             <div class="spinner-sm"></div>
             <span>Waiting for host to start…</span>
           </div>
+        </div>
+      </div>
+
+      <!-- AI Mode: description input + status (hidden in normal mode) -->
+      <div id="ai-lobby-section" style="display:none">
+        <div class="ai-lobby-card">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">🧠</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--white)">AI Pick <span class="beta-badge">Beta</span></div>
+              <div style="font-size:12px;color:var(--muted)">Describe your ideal movie night and AI will curate the deck</div>
+            </div>
+          </div>
+          <div class="input-group" style="margin-bottom:0">
+            <label>Your movie night vibe</label>
+            <textarea class="input" id="ai-desc-input" rows="3"
+              placeholder="e.g. Something fun and uplifting — maybe a comedy or adventure. Nothing too dark or violent. I loved Jumanji, The Princess Bride, What We Do in the Shadows. Or a really solid action film with a great story…"></textarea>
+          </div>
+          <button class="btn btn-secondary" id="btn-submit-ai-desc">✓ Submit My Preferences</button>
+          <div id="ai-desc-submitted-notice" class="auth-status success" style="display:none;margin-top:0">
+            ✅ Your preferences saved! Wait for the host to find movies.
+          </div>
+        </div>
+        <!-- Per-participant description status -->
+        <div id="ai-desc-status" style="display:none;margin-top:12px">
+          <p style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Preferences submitted</p>
+          <div id="ai-desc-status-list" class="participant-list" style="justify-content:flex-start;margin-top:0"></div>
+        </div>
+        <!-- AI processing status shown to host while LLM runs -->
+        <div id="ai-pick-status-row" class="auth-status" style="display:none;margin-top:12px">
+          <div class="spinner-sm"></div>
+          <span id="ai-pick-status-text">Preparing…</span>
         </div>
       </div>
 
@@ -689,6 +845,7 @@
       <div  id="winner-poster-ph" class="winner-poster-ph"  style="display:none">🎬</div>
       <div  id="winner-title"     class="winner-movie-title"></div>
       <div  id="winner-meta"      class="text-muted"></div>
+      <button id="btn-winner-radarr" class="btn btn-secondary" style="display:none;max-width:280px;margin-top:8px">📥 Add to Radarr</button>
       <div class="gap-3 mt-3" style="width:100%;max-width:280px">
         <button id="btn-winner-play-again" class="btn btn-primary">🔄 Play Again</button>
         <button id="btn-winner-leave"      class="btn btn-ghost">Leave</button>
