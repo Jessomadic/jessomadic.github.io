@@ -1,3 +1,7 @@
 # Firebase config is injected at deploy time via GitHub Actions secrets.
 # Never commit real Firebase credentials to this repo.
 plex/firebase-config.js
+
+# Local bridge test/config files can contain private network details or API keys.
+tools/config.json
+tools/pickflick-bridge/config.json

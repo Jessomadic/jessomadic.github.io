@@ -32,6 +32,23 @@ function buildUrl(hostId, portId, fallbackPort) {
   return `http://${rawHost.replace(/\/+$/, '')}:${port}`;
 }
 
+function buildBridgeUrl(host, port) {
+  let cleanHost = String(host || '127.0.0.1').trim();
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(cleanHost) ? cleanHost : `http://${cleanHost}`);
+    cleanHost = parsed.hostname;
+  } catch {
+    cleanHost = cleanHost.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/:\d+$/, '');
+  }
+  const cleanPort = String(port || '8765').trim() || '8765';
+  return `http://${cleanHost}:${cleanPort}`;
+}
+
+function setBridgeUrlText(url) {
+  $('bridge-url').textContent = url;
+  $('bridge-url-copy').textContent = url;
+}
+
 async function api(path, options = {}) {
   const res = await fetch(path, {
     ...options,
@@ -65,13 +82,15 @@ function fillSelect(select, items, getValue, getLabel, placeholder) {
 function renderBridgeStatus(health) {
   const version = health.version ? `v${health.version}` : 'unknown version';
   const hasLmAuthSupport = !!health.features?.lmStudioApiKey;
-  $('bridge-status').textContent = hasLmAuthSupport ? `Running ${version}` : `Restart needed (${version})`;
-  $('bridge-status').className = hasLmAuthSupport ? 'status ok' : 'status error';
-  if (!hasLmAuthSupport) {
+  const hasBridgeHostConfig = !!health.features?.bridgeHostConfig;
+  const current = hasLmAuthSupport && hasBridgeHostConfig;
+  $('bridge-status').textContent = current ? `Running ${version}` : `Restart needed (${version})`;
+  $('bridge-status').className = current ? 'status ok' : 'status error';
+  if (!current) {
     setResult(
-      'lm-result',
+      'bridge-result',
       false,
-      'The setup page is updated, but the running bridge process is older and cannot forward the LM Studio API token yet. Restart or reinstall PickFlick Bridge, then refresh this page.'
+      'The setup page is newer than the running bridge process. Restart or reinstall PickFlick Bridge, then refresh this page.'
     );
   }
 }
@@ -79,7 +98,19 @@ function renderBridgeStatus(health) {
 async function loadConfig() {
   const health = await api('/health');
   renderBridgeStatus(health);
-  $('bridge-url').textContent = `http://${location.host}`;
+
+  const bridge = health.config.bridge;
+  $('bridge-host').value = bridge.host || location.hostname || '127.0.0.1';
+  $('bridge-port').value = bridge.port || location.port || '8765';
+  $('bridge-listen-host').value = bridge.listenHost || '0.0.0.0';
+  setBridgeUrlText(bridge.bridgeUrl || `http://${location.host}`);
+  const datalist = $('bridge-host-suggestions');
+  datalist.innerHTML = '';
+  [...new Set([bridge.host, '127.0.0.1', ...(bridge.networkHosts || [])].filter(Boolean))].forEach(host => {
+    const option = document.createElement('option');
+    option.value = host;
+    datalist.appendChild(option);
+  });
 
   const lm = health.config.lmStudio;
   const lmParts = splitBaseUrl(lm.baseUrl, 1234);
@@ -97,6 +128,34 @@ async function loadConfig() {
   $('radarr-host').value = radarrParts.host;
   $('radarr-port').value = radarrParts.port;
   if (radarr.hasApiKey) $('radarr-key').placeholder = 'Saved API key (enter a new key to change)';
+  $('btn-verify-radarr').disabled = !radarr.configured;
+}
+
+async function saveBridge() {
+  $('btn-save-bridge').disabled = true;
+  setResult('bridge-result', true, 'Saving bridge address...');
+  try {
+    const host = $('bridge-host').value.trim();
+    const port = $('bridge-port').value.trim() || '8765';
+    const listenHost = $('bridge-listen-host').value.trim() || '0.0.0.0';
+    const data = await api('/api/bridge/save', {
+      method: 'POST',
+      body: JSON.stringify({ host, port, listenHost }),
+    });
+    const url = data.config?.bridge?.bridgeUrl || buildBridgeUrl(host, port);
+    setBridgeUrlText(url);
+    setResult(
+      'bridge-result',
+      true,
+      data.restartRequired
+        ? `Saved ${url}. Restart PickFlick Bridge for listen address or port changes to take effect.`
+        : `Saved ${url}. Use this URL in PickFlick AI Mode.`
+    );
+  } catch (e) {
+    setResult('bridge-result', false, e.message);
+  } finally {
+    $('btn-save-bridge').disabled = false;
+  }
 }
 
 async function testLm() {
@@ -206,6 +265,7 @@ async function saveRadarr() {
       }),
     });
     setResult('radarr-result', true, 'Saved Radarr settings.');
+    $('btn-verify-radarr').disabled = false;
     $('radarr-key').value = '';
     $('radarr-key').placeholder = 'Saved API key (enter a new key to change)';
   } catch (e) {
@@ -213,11 +273,33 @@ async function saveRadarr() {
   }
 }
 
+async function verifyRadarr() {
+  $('btn-verify-radarr').disabled = true;
+  setResult('radarr-result', true, 'Verifying saved Radarr settings...');
+  try {
+    const data = await api('/radarr/validate', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    setResult(
+      'radarr-result',
+      true,
+      `Radarr ready${data.version ? ` v${data.version}` : ''}. Root: ${data.rootFolderPath}. Quality profile ID: ${data.qualityProfileId}.`
+    );
+  } catch (e) {
+    setResult('radarr-result', false, e.message);
+  } finally {
+    $('btn-verify-radarr').disabled = false;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  $('btn-save-bridge').onclick = saveBridge;
   $('btn-test-lm').onclick = testLm;
   $('btn-save-lm').onclick = saveLm;
   $('btn-test-radarr').onclick = testRadarr;
   $('btn-save-radarr').onclick = saveRadarr;
+  $('btn-verify-radarr').onclick = verifyRadarr;
   try {
     await loadConfig();
   } catch (e) {

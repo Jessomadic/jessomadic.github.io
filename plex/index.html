@@ -664,12 +664,12 @@
             <div id="bridge-config-panel" style="display:flex;flex-direction:column;gap:10px">
               <div class="input-group" style="margin-bottom:0">
                 <label>PickFlick Bridge URL</label>
-                <input class="input" id="bridge-url-input" type="url" placeholder="http://127.0.0.1:8765" autocomplete="off" style="font-size:14px">
+                <input class="input" id="bridge-url-input" type="url" placeholder="http://192.168.x.x:8765" autocomplete="off" style="font-size:14px">
               </div>
               <button class="btn btn-secondary" id="btn-test-bridge" style="padding:10px 16px">Test Bridge</button>
               <div id="bridge-test-result" style="display:none"></div>
               <p style="font-size:11px;color:var(--muted);line-height:1.65">
-                Recommended. Run PickFlick Bridge on the host Windows machine, then use its setup page to choose the LM Studio model and Radarr defaults.
+                Recommended. Run PickFlick Bridge on the host Windows machine, then copy the Bridge URL from its setup page. Use the host's LAN IP for phones.
               </p>
             </div>
             <div id="direct-config-panel" style="display:none;flex-direction:column;gap:10px">

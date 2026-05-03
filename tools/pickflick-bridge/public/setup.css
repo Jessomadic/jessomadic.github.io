@@ -104,6 +104,10 @@ h2 { font-size: 18px; }
   grid-template-columns: minmax(0, 1fr) 160px;
 }
 
+.grid.three {
+  grid-template-columns: minmax(0, 1fr) 140px minmax(160px, 220px);
+}
+
 label {
   display: grid;
   gap: 6px;
@@ -144,6 +148,10 @@ select:disabled {
   grid-column: span 2;
 }
 
+.bridge-actions {
+  grid-template-columns: auto minmax(220px, 1fr);
+}
+
 button {
   min-height: 42px;
   border: 0;
@@ -176,6 +184,7 @@ code {
 @media (max-width: 720px) {
   header,
   .grid.two,
+  .grid.three,
   .actions {
     grid-template-columns: 1fr;
     display: grid;

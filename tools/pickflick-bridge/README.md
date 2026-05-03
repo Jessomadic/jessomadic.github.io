@@ -10,6 +10,12 @@ From this folder, run PowerShell:
 .\Install-PickFlickBridge.ps1
 ```
 
+Optional host controls:
+
+```powershell
+.\Install-PickFlickBridge.ps1 -BridgeHost 192.168.1.6 -ListenHost 0.0.0.0 -Port 8765
+```
+
 The installer:
 
 - checks for Node.js 18 or newer
@@ -18,23 +24,28 @@ The installer:
 - creates a desktop setup shortcut
 - creates a startup shortcut so the bridge starts when Windows signs in
 - opens `http://127.0.0.1:8765/setup`
+- listens on all local addresses by default so the Windows host and phones on the LAN can both reach it
 
 The setup page walks through:
 
-1. LM Studio IP/port
-2. LM Studio connection test
-3. loaded model dropdown
-4. Radarr IP/port/API key
-5. Radarr auth test
-6. Radarr root folder and quality profile dropdowns
+1. Bridge host/IP and port shown to PickFlick
+2. LM Studio IP/port
+3. LM Studio connection test
+4. loaded model dropdown
+5. Radarr IP/port/API key
+6. Radarr auth test
+7. Radarr root folder and quality profile dropdowns
+8. saved Radarr add-settings verification
 
 ## Use In PickFlick
 
-In PickFlick AI Mode, choose **Bridge** and use:
+In PickFlick AI Mode, choose **Bridge** and use the URL shown on the setup page. On the Windows host it will usually be:
 
 ```text
 http://127.0.0.1:8765
 ```
+
+On a phone or another device, use the Windows machine's LAN IP from setup, for example `http://192.168.1.6:8765`.
 
 Keep the bridge running while the host is finding movies with AI or adding a non-library suggestion to Radarr.
 
@@ -48,6 +59,7 @@ GET  /lm/models
 POST /lm/chat
 GET  /radarr/status
 GET  /radarr/defaults
+POST /radarr/validate
 POST /radarr/add
 ```
 
@@ -55,6 +67,7 @@ Setup-only endpoints:
 
 ```text
 GET  /api/config
+POST /api/bridge/save
 POST /api/lm/test
 POST /api/lm/save
 POST /api/radarr/test

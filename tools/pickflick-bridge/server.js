@@ -9,8 +9,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.4';
+const VERSION = '0.1.5';
 const DEFAULT_PORT = 8765;
+const DEFAULT_LISTEN_HOST = '0.0.0.0';
 const DEFAULT_HOST = '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = process.env.PICKFLICK_BRIDGE_DATA
@@ -32,7 +33,56 @@ const FEATURES = {
   radarrSavedApiKey: true,
   radarrSetup: true,
   setupUrlParsing: true,
+  bridgeHostConfig: true,
+  radarrPreflight: true,
 };
+
+function localIpv4Hosts() {
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter(iface => iface && iface.family === 'IPv4' && !iface.internal)
+    .map(iface => iface.address)
+    .filter(address => address && !address.startsWith('169.254.'))
+    .sort((a, b) => {
+      const aPreferred = /^192\.168\./.test(a) ? 0 : 1;
+      const bPreferred = /^192\.168\./.test(b) ? 0 : 1;
+      return aPreferred - bPreferred || a.localeCompare(b, undefined, { numeric: true });
+    });
+}
+
+function defaultPublicHost() {
+  return localIpv4Hosts()[0] || DEFAULT_HOST;
+}
+
+function isWildcardHost(host) {
+  return ['0.0.0.0', '::', '*'].includes(String(host || '').trim());
+}
+
+function normalizeHost(input, fallback = DEFAULT_HOST, { allowWildcard = false } = {}) {
+  const raw = String(input || '').trim();
+  if (!raw) return fallback;
+  if (allowWildcard && isWildcardHost(raw)) return '0.0.0.0';
+  const source = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+  try {
+    const parsed = new URL(source);
+    const host = parsed.hostname.replace(/^\[(.*)]$/, '$1');
+    if (!host || (!allowWildcard && isWildcardHost(host))) return fallback;
+    return host;
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizePort(input, fallback = DEFAULT_PORT) {
+  const port = Number(input);
+  return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : fallback;
+}
+
+function localSetupHost(listenHost) {
+  const host = String(listenHost || '').trim();
+  if (!host || isWildcardHost(host) || host === '::1') return DEFAULT_HOST;
+  return host;
+}
 
 function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -41,7 +91,8 @@ function ensureDataDir() {
 function defaultConfig() {
   return {
     bridge: {
-      host: DEFAULT_HOST,
+      host: defaultPublicHost(),
+      listenHost: DEFAULT_LISTEN_HOST,
       port: DEFAULT_PORT,
     },
     lmStudio: {
@@ -61,7 +112,7 @@ function defaultConfig() {
 function loadConfig() {
   ensureDataDir();
   try {
-    const loaded = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    const loaded = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8').replace(/^\uFEFF/, ''));
     return mergeConfig(defaultConfig(), loaded);
   } catch {
     const config = defaultConfig();
@@ -71,10 +122,19 @@ function loadConfig() {
 }
 
 function mergeConfig(base, loaded) {
+  const loadedBridge = loaded.bridge || {};
+  const bridge = {
+    ...base.bridge,
+    ...loadedBridge,
+  };
+  bridge.port = normalizePort(bridge.port, DEFAULT_PORT);
+  bridge.host = normalizeHost(bridge.host, defaultPublicHost());
+  bridge.listenHost = normalizeHost(bridge.listenHost, DEFAULT_LISTEN_HOST, { allowWildcard: true });
+
   return {
     ...base,
     ...loaded,
-    bridge: { ...base.bridge, ...(loaded.bridge || {}) },
+    bridge,
     lmStudio: { ...base.lmStudio, ...(loaded.lmStudio || {}) },
     radarr: { ...base.radarr, ...(loaded.radarr || {}) },
   };
@@ -88,11 +148,18 @@ function saveConfig(config) {
 let config = loadConfig();
 
 function sanitizedConfig() {
+  const port = normalizePort(config.bridge.port, DEFAULT_PORT);
+  const publicHost = normalizeHost(config.bridge.host, defaultPublicHost());
+  const listenHost = normalizeHost(config.bridge.listenHost, DEFAULT_LISTEN_HOST, { allowWildcard: true });
   return {
     bridge: {
-      host: config.bridge.host,
-      port: Number(config.bridge.port) || DEFAULT_PORT,
-      setupUrl: `http://${config.bridge.host || DEFAULT_HOST}:${Number(config.bridge.port) || DEFAULT_PORT}/setup`,
+      host: publicHost,
+      listenHost,
+      port,
+      bridgeUrl: `http://${publicHost}:${port}`,
+      setupUrl: `http://${publicHost}:${port}/setup`,
+      localSetupUrl: `http://${localSetupHost(listenHost)}:${port}/setup`,
+      networkHosts: localIpv4Hosts(),
     },
     lmStudio: {
       baseUrl: config.lmStudio.baseUrl,
@@ -252,6 +319,25 @@ async function testRadarr(baseUrl, apiKey) {
   };
 }
 
+async function getRadarrMovieByTmdbId(baseUrl, headers, tmdbId) {
+  const movies = await fetchJson(`${baseUrl}/api/v3/movie`, { headers }, 15000);
+  if (!Array.isArray(movies)) return null;
+  return movies.find(movie => Number(movie.tmdbId) === Number(tmdbId)) || null;
+}
+
+function chooseRadarrDefaults(result, savedRootFolderPath, savedQualityProfileId) {
+  const rootFolders = Array.isArray(result.rootFolders) ? result.rootFolders : [];
+  const qualityProfiles = Array.isArray(result.qualityProfiles) ? result.qualityProfiles : [];
+  const rootFolder = rootFolders.find(folder => folder.path === savedRootFolderPath) || rootFolders[0];
+  const qualityProfile = qualityProfiles.find(profile => Number(profile.id) === Number(savedQualityProfileId)) || qualityProfiles[0];
+  return {
+    rootFolderPath: rootFolder?.path || '',
+    qualityProfileId: qualityProfile?.id ?? null,
+    rootFolder,
+    qualityProfile,
+  };
+}
+
 function staticFile(filePath, contentType, res) {
   fs.readFile(filePath, (err, data) => {
     if (err) {
@@ -315,6 +401,20 @@ async function route(req, res) {
     }
     if (req.method === 'GET' && pathname === '/api/config') {
       sendJson(req, res, 200, { ok: true, config: sanitizedConfig() });
+      return;
+    }
+    if (req.method === 'POST' && pathname === '/api/bridge/save') {
+      const body = await readJson(req);
+      const previousPort = normalizePort(config.bridge.port, DEFAULT_PORT);
+      const previousListenHost = normalizeHost(config.bridge.listenHost, DEFAULT_LISTEN_HOST, { allowWildcard: true });
+      config.bridge.host = normalizeHost(body.host, config.bridge.host || defaultPublicHost());
+      config.bridge.listenHost = normalizeHost(body.listenHost, config.bridge.listenHost || DEFAULT_LISTEN_HOST, { allowWildcard: true });
+      config.bridge.port = normalizePort(body.port, previousPort);
+      saveConfig(config);
+      const restartRequired =
+        previousPort !== config.bridge.port ||
+        previousListenHost !== config.bridge.listenHost;
+      sendJson(req, res, 200, { ok: true, restartRequired, config: sanitizedConfig() });
       return;
     }
     if (req.method === 'POST' && pathname === '/api/lm/test') {
@@ -396,7 +496,14 @@ async function route(req, res) {
     }
     if (req.method === 'GET' && pathname === '/radarr/status') {
       const result = await testRadarr(config.radarr.baseUrl, config.radarr.apiKey);
-      sendJson(req, res, 200, { ok: true, version: result.version, config: sanitizedConfig().radarr });
+      const defaults = chooseRadarrDefaults(result, config.radarr.rootFolderPath, config.radarr.qualityProfileId);
+      sendJson(req, res, 200, {
+        ok: true,
+        version: result.version,
+        rootFolderReady: !!defaults.rootFolderPath,
+        qualityProfileReady: defaults.qualityProfileId != null,
+        config: sanitizedConfig().radarr,
+      });
       return;
     }
     if (req.method === 'GET' && pathname === '/radarr/defaults') {
@@ -406,6 +513,29 @@ async function route(req, res) {
         rootFolders: result.rootFolders,
         qualityProfiles: result.qualityProfiles,
         config: sanitizedConfig().radarr,
+      });
+      return;
+    }
+    if (req.method === 'POST' && pathname === '/radarr/validate') {
+      const body = await readJson(req);
+      const baseUrl = normalizeBaseUrl(config.radarr.baseUrl, 7878);
+      const key = String(config.radarr.apiKey || '').trim();
+      const tmdbId = body.tmdbId == null ? null : Number(body.tmdbId);
+      if (!baseUrl || !key) throw new Error('Radarr is not configured in PickFlick Bridge setup');
+      const result = await testRadarr(baseUrl, key);
+      const defaults = chooseRadarrDefaults(result, config.radarr.rootFolderPath, config.radarr.qualityProfileId);
+      if (!defaults.rootFolderPath) throw new Error('No Radarr root folder is configured');
+      if (defaults.qualityProfileId == null) throw new Error('No Radarr quality profile is configured');
+      let existing = null;
+      if (Number.isFinite(tmdbId)) {
+        existing = await getRadarrMovieByTmdbId(baseUrl, { 'X-Api-Key': key }, tmdbId);
+      }
+      sendJson(req, res, 200, {
+        ok: true,
+        version: result.version,
+        rootFolderPath: defaults.rootFolderPath,
+        qualityProfileId: defaults.qualityProfileId,
+        existing: existing ? { title: existing.title, tmdbId: existing.tmdbId } : null,
       });
       return;
     }
@@ -419,12 +549,19 @@ async function route(req, res) {
       let rootFolderPath = config.radarr.rootFolderPath;
       let qualityProfileId = config.radarr.qualityProfileId;
       const headers = { 'X-Api-Key': key, 'Content-Type': 'application/json' };
+      const existing = await getRadarrMovieByTmdbId(baseUrl, { 'X-Api-Key': key }, tmdbId);
+      if (existing) {
+        sendJson(req, res, 200, { ok: true, alreadyExists: true, movie: { title: existing.title, tmdbId: existing.tmdbId } });
+        return;
+      }
       if (!rootFolderPath || !qualityProfileId) {
         const defaults = await testRadarr(baseUrl, key);
-        rootFolderPath ||= defaults.rootFolders[0]?.path || '';
-        qualityProfileId ||= defaults.qualityProfiles[0]?.id || 1;
+        const chosen = chooseRadarrDefaults(defaults, rootFolderPath, qualityProfileId);
+        rootFolderPath = chosen.rootFolderPath;
+        qualityProfileId = chosen.qualityProfileId;
       }
       if (!rootFolderPath) throw new Error('No Radarr root folder is configured');
+      if (qualityProfileId == null) throw new Error('No Radarr quality profile is configured');
       const addPayload = {
         tmdbId,
         title: String(body.title || ''),
@@ -460,15 +597,23 @@ async function route(req, res) {
   }
 }
 
-const port = Number(process.env.PICKFLICK_BRIDGE_PORT || config.bridge.port || DEFAULT_PORT);
-const host = process.env.PICKFLICK_BRIDGE_HOST || config.bridge.host || DEFAULT_HOST;
+const port = normalizePort(process.env.PICKFLICK_BRIDGE_PORT || config.bridge.port, DEFAULT_PORT);
+const listenHost = normalizeHost(
+  process.env.PICKFLICK_BRIDGE_LISTEN_HOST || config.bridge.listenHost,
+  DEFAULT_LISTEN_HOST,
+  { allowWildcard: true },
+);
+const host = normalizeHost(process.env.PICKFLICK_BRIDGE_HOST || config.bridge.host, defaultPublicHost());
 config.bridge.port = port;
 config.bridge.host = host;
+config.bridge.listenHost = listenHost;
 saveConfig(config);
 
 const server = http.createServer(route);
-server.listen(port, host, () => {
+server.listen(port, listenHost, () => {
   console.log(`PickFlick Bridge ${VERSION}`);
-  console.log(`Setup: http://${host}:${port}/setup`);
+  console.log(`Listening: http://${listenHost}:${port}`);
+  console.log(`Setup: http://${localSetupHost(listenHost)}:${port}/setup`);
+  console.log(`PickFlick URL: http://${host}:${port}`);
   console.log(`Config: ${CONFIG_PATH}`);
 });

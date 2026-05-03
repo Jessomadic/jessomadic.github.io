@@ -19,6 +19,37 @@
     <section class="panel">
       <div class="section-head">
         <div>
+          <h2>Bridge Access</h2>
+          <p>Choose the address PickFlick should use to reach this Windows machine. The bridge listens on all local addresses by default so localhost and phones on the LAN can both work.</p>
+        </div>
+      </div>
+
+      <div class="grid three">
+        <label>
+          <span>PickFlick host/IP</span>
+          <input id="bridge-host" type="text" placeholder="192.168.x.x" list="bridge-host-suggestions">
+          <datalist id="bridge-host-suggestions"></datalist>
+        </label>
+        <label>
+          <span>Port</span>
+          <input id="bridge-port" type="number" min="1" max="65535" placeholder="8765">
+        </label>
+        <label>
+          <span>Listen address</span>
+          <input id="bridge-listen-host" type="text" placeholder="0.0.0.0">
+        </label>
+      </div>
+
+      <div class="actions bridge-actions">
+        <button id="btn-save-bridge">Save Bridge Address</button>
+        <code id="bridge-url">http://127.0.0.1:8765</code>
+      </div>
+      <div id="bridge-result" class="result" hidden></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
           <h2>LM Studio</h2>
           <p>Enter the machine and port where LM Studio is running, test it, then choose the loaded model PickFlick should use.</p>
         </div>
@@ -83,6 +114,7 @@
           <option value="">Test connection to load quality profiles</option>
         </select>
         <button id="btn-save-radarr" disabled>Save Radarr</button>
+        <button id="btn-verify-radarr" disabled>Verify Saved Radarr</button>
       </div>
       <div id="radarr-result" class="result" hidden></div>
     </section>
@@ -90,7 +122,7 @@
     <section class="panel compact">
       <h2>Use In PickFlick</h2>
       <p>In PickFlick AI Mode, choose <strong>Bridge</strong> and use this URL:</p>
-      <code id="bridge-url">http://127.0.0.1:8765</code>
+      <code id="bridge-url-copy">http://127.0.0.1:8765</code>
       <p class="muted">Keep this bridge window running while the host is creating the AI movie deck or adding suggestions to Radarr.</p>
     </section>
   </main>

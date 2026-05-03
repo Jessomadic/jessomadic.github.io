@@ -1615,7 +1615,7 @@ function isBridgeMode() {
   return getAiConnectionMode() === 'bridge';
 }
 function getBridgeUrl() {
-  return sessionStorage.getItem('pf_bridge_url') || 'http://127.0.0.1:8765';
+  return sessionStorage.getItem('pf_bridge_url') || '';
 }
 function setBridgeUrl(url) {
   const normalized = normalizeEndpoint(url || 'http://127.0.0.1:8765');
@@ -1758,6 +1758,7 @@ async function addToRadarr(movie) {
 async function tmdbSearchMovie(title, year) {
   const apiKey = window.tmdbApiKey;
   if (!apiKey || apiKey === 'YOUR_TMDB_API_KEY') return null;
+  if (isSequel({ title })) return null;
   try {
     const yearParam = year ? `&year=${year}` : '';
     const r = await fetch(
@@ -1836,14 +1837,20 @@ Your task has TWO parts:
 
 PART 1 — "selected": Pick 20–30 movies from the catalog that best match everyone's preferences.
 - Use the exact "id" field from the catalog
-- Balance every participant's mood and tone preferences
-- Favour variety: mix genres, eras, energy levels when tastes differ
+- Treat every participant as equal weight. Do not let the longest, most specific, loudest, or first preference dominate the whole list.
+- Build a balanced slate: include clear matches for each participant, then prioritize overlap movies that satisfy multiple people.
+- If preferences conflict, split the slate fairly across the different moods instead of choosing only one person's lane.
+- Respect mood intensity. If someone asks for calming, cozy, sick-day, or low-stress comfort, avoid making the whole deck intense, bleak, scary, or exhausting.
+- Favour variety: mix genres, eras, runtimes, emotional intensity, and energy levels when tastes differ.
+- Avoid obvious sequels or late-franchise entries unless a participant explicitly asks for that franchise or sequels.
 
 PART 2 — "suggestions": Recommend up to 8 real movies NOT in the catalog that the group would love.
 - Draw from your training knowledge of real films
 - Match the same mood/vibe the participants described
 - Be accurate — only suggest real films with the correct title and year
 - These will be offered as Radarr downloads so accuracy matters
+- Strongly prefer standalone films. Do not suggest sequels, prequels, spin-offs, "Part 2", numbered follow-ups, or late-franchise entries unless the group explicitly asked for them.
+- Do not suggest movies already represented in the catalog by title.
 
 CRITICAL OUTPUT RULES:
 - Return only one compact valid JSON object.
@@ -1852,7 +1859,7 @@ CRITICAL OUTPUT RULES:
 - "selected" must be an array of 20 to 30 string ids copied exactly from the catalog.
 - Do not put objects in "selected"; use string ids only.
 - "suggestions" must be an array of objects with title and year only.
-- "reason" must be one short sentence.
+- "reason" must be one short sentence explaining how the slate balances the group.
 
 Exact JSON shape:
 {"selected":["id1","id2"],"suggestions":[{"title":"Movie Name","year":2019}],"reason":"One sentence"}`;
@@ -2099,7 +2106,7 @@ async function runAiPickHardened() {
     const suggestionsRaw = (parsed.suggestions ?? [])
       .filter(s => {
         const key = `${String(s?.title || '').trim().toLowerCase()}|${String(s?.year || '').trim()}`;
-        if (!s?.title || suggestionsSeen.has(key)) return false;
+        if (!s?.title || suggestionsSeen.has(key) || isSequel({ title: s.title })) return false;
         suggestionsSeen.add(key);
         return true;
       })
@@ -2112,6 +2119,7 @@ async function runAiPickHardened() {
     const suggestedTmdbIds = new Set();
     const suggestedMovies = suggestionsResolved
       .filter(r => r.status === 'fulfilled' && r.value && !existingTmdbIds.has(r.value.tmdbId))
+      .filter(r => !isSequel({ title: r.value.title }))
       .filter(r => {
         if (suggestedTmdbIds.has(r.value.tmdbId)) return false;
         suggestedTmdbIds.add(r.value.tmdbId);

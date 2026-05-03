@@ -21,11 +21,12 @@ if ($OpenSetup) {
   if (Test-Path $configPath) {
     try {
       $cfg = Get-Content -Raw $configPath | ConvertFrom-Json
-      if ($cfg.bridge.host) { $hostName = [string]$cfg.bridge.host }
       if ($cfg.bridge.port) { $port = [int]$cfg.bridge.port }
+      if ($cfg.bridge.listenHost -and $cfg.bridge.listenHost -ne "0.0.0.0" -and $cfg.bridge.listenHost -ne "::") {
+        $hostName = [string]$cfg.bridge.listenHost
+      }
     } catch { }
   }
-  if ($hostName -eq "0.0.0.0") { $hostName = "127.0.0.1" }
   Start-Job -ScriptBlock {
     param($SetupHost, $SetupPort)
     Start-Sleep -Seconds 2
