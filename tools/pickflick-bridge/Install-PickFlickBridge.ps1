@@ -126,6 +126,19 @@ function Write-SettingsDb {
   Write-Utf8NoBom -Path $DbPath -Value $doc
 }
 
+function Write-StartupBatch {
+  param(
+    [string]$Path
+  )
+
+  $content = @"
+@echo off
+cd /d "%LOCALAPPDATA%\PickFlickBridge\app"
+start "" powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%LOCALAPPDATA%\PickFlickBridge\app\Start-PickFlickBridge.ps1"
+"@
+  Write-Utf8NoBom -Path $Path -Value $content
+}
+
 Require-Node
 
 $source = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -133,6 +146,7 @@ $base = Join-Path $env:LOCALAPPDATA "PickFlickBridge"
 $app = Join-Path $base "app"
 $startup = [Environment]::GetFolderPath("Startup")
 $startupShortcut = Join-Path $startup "PickFlick Bridge.lnk"
+$startupBatch = Join-Path $startup "PickFlick Bridge.bat"
 $startScript = Join-Path $app "Start-PickFlickBridge.ps1"
 $publicHost = Normalize-HostValue -Value $BridgeHost -Fallback (Get-DefaultBridgeHost)
 $bindHost = Normalize-HostValue -Value $ListenHost -Fallback "0.0.0.0" -AllowWildcard
@@ -185,12 +199,8 @@ try {
 
 $shell = New-Object -ComObject WScript.Shell
 if (-not $NoStartupShortcut) {
-  $shortcut = $shell.CreateShortcut($startupShortcut)
-  $shortcut.TargetPath = "powershell.exe"
-  $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$startScript`""
-  $shortcut.WorkingDirectory = $app
-  $shortcut.Description = "Start PickFlick Bridge at sign-in"
-  $shortcut.Save()
+  if (Test-Path $startupShortcut) { Remove-Item -LiteralPath $startupShortcut -Force }
+  Write-StartupBatch -Path $startupBatch
 }
 
 $setupShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "PickFlick Bridge Setup.lnk"
@@ -203,6 +213,7 @@ $shortcut.Save()
 
 Write-Host "PickFlick Bridge installed to: $app"
 Write-Host "Settings database: $dbPath"
+if (-not $NoStartupShortcut) { Write-Host "Startup batch: $startupBatch" }
 if (Test-Path $configPath) { Write-Host "Legacy config migration source: $configPath" }
 Write-Host "Setup URL: http://127.0.0.1:$Port/setup"
 Write-Host "PickFlick Bridge URL: http://$publicHost`:$Port"

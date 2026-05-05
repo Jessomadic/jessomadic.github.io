@@ -22,9 +22,10 @@ The installer:
 - stops an already-running PickFlick Bridge on the same port before updating files
 - copies the bridge to `%LOCALAPPDATA%\PickFlickBridge\app`
 - migrates existing `config.json` settings into `%LOCALAPPDATA%\PickFlickBridge\settings.db.json`
+- saves the selected LM Studio model, Radarr root folder, and Radarr quality profile in that database
 - writes settings with atomic replace + rolling backups so they survive reinstall and reboot
 - creates a desktop setup shortcut
-- creates a startup shortcut so the bridge starts when Windows signs in
+- creates `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PickFlick Bridge.bat` so the bridge starts when Windows signs in
 - opens `http://127.0.0.1:8765/setup`
 - listens on all local addresses by default so the Windows host and phones on the LAN can both reach it
 
@@ -61,7 +62,7 @@ Bridge settings are stored locally at:
 %LOCALAPPDATA%\PickFlickBridge\settings.db.json
 ```
 
-The older `%LOCALAPPDATA%\PickFlickBridge\config.json` file is only used as a migration fallback. The database file is never pushed to GitHub and can contain local IPs/API keys.
+The older `%LOCALAPPDATA%\PickFlickBridge\config.json` file is only used as a migration fallback. The database file is never pushed to GitHub and can contain local IPs/API keys, the selected LM Studio model, the selected Radarr root folder, and the selected Radarr quality profile.
 
 ## API
 
@@ -92,4 +93,4 @@ POST /api/radarr/save
 %LOCALAPPDATA%\PickFlickBridge\app\Uninstall-PickFlickBridge.ps1
 ```
 
-Use `-KeepConfig` to remove the app and shortcuts but keep `config.json`.
+Use `-KeepConfig` to remove the app and shortcuts but keep the local settings database.

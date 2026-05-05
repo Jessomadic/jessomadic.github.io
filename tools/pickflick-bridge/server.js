@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.6';
+const VERSION = '0.1.7';
 const DEFAULT_PORT = 8765;
 const DEFAULT_LISTEN_HOST = '0.0.0.0';
 const DEFAULT_HOST = '127.0.0.1';

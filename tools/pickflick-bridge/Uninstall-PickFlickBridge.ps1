@@ -5,7 +5,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 $base = Join-Path $env:LOCALAPPDATA "PickFlickBridge"
-$startupShortcut = Join-Path ([Environment]::GetFolderPath("Startup")) "PickFlick Bridge.lnk"
+$startup = [Environment]::GetFolderPath("Startup")
+$startupShortcut = Join-Path $startup "PickFlick Bridge.lnk"
+$startupBatch = Join-Path $startup "PickFlick Bridge.bat"
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "PickFlick Bridge Setup.lnk"
 
 Get-CimInstance Win32_Process |
@@ -13,6 +15,7 @@ Get-CimInstance Win32_Process |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 if (Test-Path $startupShortcut) { Remove-Item -LiteralPath $startupShortcut -Force }
+if (Test-Path $startupBatch) { Remove-Item -LiteralPath $startupBatch -Force }
 if (Test-Path $desktopShortcut) { Remove-Item -LiteralPath $desktopShortcut -Force }
 
 if (Test-Path $base) {

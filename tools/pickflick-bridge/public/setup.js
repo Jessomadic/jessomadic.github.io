@@ -2,6 +2,12 @@
 
 const $ = id => document.getElementById(id);
 
+const savedSelections = {
+  lmModelId: '',
+  radarrRootFolderPath: '',
+  radarrQualityProfileId: '',
+};
+
 function setResult(id, ok, message) {
   const el = $(id);
   el.hidden = false;
@@ -79,6 +85,15 @@ function fillSelect(select, items, getValue, getLabel, placeholder) {
   select.disabled = items.length === 0;
 }
 
+function selectValueIfAvailable(select, value) {
+  const target = String(value || '');
+  if (!target) return false;
+  const option = Array.from(select.options).find(item => item.value === target);
+  if (!option) return false;
+  select.value = target;
+  return true;
+}
+
 function renderBridgeStatus(health) {
   const version = health.version ? `v${health.version}` : 'unknown version';
   const hasLmAuthSupport = !!health.features?.lmStudioApiKey;
@@ -116,6 +131,7 @@ async function loadConfig() {
   const lmParts = splitBaseUrl(lm.baseUrl, 1234);
   $('lm-host').value = lmParts.host;
   $('lm-port').value = lmParts.port;
+  savedSelections.lmModelId = lm.modelId || '';
   if (lm.modelId) {
     fillSelect($('lm-model-select'), [{ id: lm.modelId }], m => m.id, m => m.id, 'Choose model');
     $('lm-model-select').value = lm.modelId;
@@ -127,6 +143,33 @@ async function loadConfig() {
   const radarrParts = splitBaseUrl(radarr.baseUrl, 7878);
   $('radarr-host').value = radarrParts.host;
   $('radarr-port').value = radarrParts.port;
+  savedSelections.radarrRootFolderPath = radarr.rootFolderPath || '';
+  savedSelections.radarrQualityProfileId = radarr.qualityProfileId == null ? '' : String(radarr.qualityProfileId);
+  if (savedSelections.radarrRootFolderPath) {
+    fillSelect(
+      $('radarr-root-select'),
+      [{ path: savedSelections.radarrRootFolderPath }],
+      folder => folder.path,
+      folder => folder.path,
+      'Choose root folder'
+    );
+    $('radarr-root-select').value = savedSelections.radarrRootFolderPath;
+  }
+  if (savedSelections.radarrQualityProfileId) {
+    fillSelect(
+      $('radarr-quality-select'),
+      [{ id: savedSelections.radarrQualityProfileId, name: `Saved profile ID ${savedSelections.radarrQualityProfileId}` }],
+      profile => profile.id,
+      profile => profile.name,
+      'Choose quality profile'
+    );
+    $('radarr-quality-select').value = savedSelections.radarrQualityProfileId;
+  }
+  $('btn-save-radarr').disabled = !(
+    radarr.configured &&
+    savedSelections.radarrRootFolderPath &&
+    savedSelections.radarrQualityProfileId
+  );
   if (radarr.hasApiKey) $('radarr-key').placeholder = 'Saved API key (enter a new key to change)';
   $('btn-verify-radarr').disabled = !radarr.configured;
 }
@@ -174,6 +217,7 @@ async function testLm() {
       model => model.id,
       data.models.length ? 'Choose model' : 'No loaded models found'
     );
+    selectValueIfAvailable($('lm-model-select'), savedSelections.lmModelId);
     $('btn-save-lm').disabled = data.models.length === 0;
     setResult('lm-result', data.models.length > 0,
       data.models.length
@@ -203,6 +247,7 @@ async function saveLm() {
         apiKey: $('lm-key').value.trim(),
       }),
     });
+    savedSelections.lmModelId = modelId;
     setResult('lm-result', true, `Saved LM Studio model: ${modelId}`);
     $('lm-key').value = '';
     $('lm-key').placeholder = 'Saved API token (enter a new token to change)';
@@ -235,6 +280,8 @@ async function testRadarr() {
       profile => profile.name,
       data.qualityProfiles.length ? 'Choose quality profile' : 'No quality profiles found'
     );
+    selectValueIfAvailable($('radarr-root-select'), savedSelections.radarrRootFolderPath);
+    selectValueIfAvailable($('radarr-quality-select'), savedSelections.radarrQualityProfileId);
     $('btn-save-radarr').disabled = !(data.rootFolders.length && data.qualityProfiles.length);
     setResult('radarr-result', true, `Connected to Radarr ${data.version || ''}.`);
   } catch (e) {
@@ -264,6 +311,8 @@ async function saveRadarr() {
         qualityProfileId,
       }),
     });
+    savedSelections.radarrRootFolderPath = rootFolderPath;
+    savedSelections.radarrQualityProfileId = String(qualityProfileId);
     setResult('radarr-result', true, 'Saved Radarr settings.');
     $('btn-verify-radarr').disabled = false;
     $('radarr-key').value = '';
