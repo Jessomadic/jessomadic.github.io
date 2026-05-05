@@ -15,6 +15,7 @@ const POLL_INTERVAL  = 2000;  // ms between Plex PIN polls
 const AUTH_TIMEOUT   = 5 * 60 * 1000; // 5 min
 const AI_LM_MAX_TOKENS = 4096;
 const AI_LM_TEMPERATURE = 0.15;
+const AI_LM_IDLE_TTL_SECONDS = 30 * 60;
 
 // TMDB image CDN — no auth required once you have the poster_path.
 // API key is injected by CI from the TMDB_API_KEY GitHub Actions secret.
@@ -1896,6 +1897,7 @@ async function callLmStudio(endpoint, modelId, systemPrompt, userPrompt) {
         userPrompt,
         temperature: AI_LM_TEMPERATURE,
         maxTokens: AI_LM_MAX_TOKENS,
+        ttl: AI_LM_IDLE_TTL_SECONDS,
       }),
     });
     return data.content ?? '';
@@ -1914,6 +1916,7 @@ async function callLmStudio(endpoint, modelId, systemPrompt, userPrompt) {
         ],
         temperature: AI_LM_TEMPERATURE,
         max_tokens:  AI_LM_MAX_TOKENS,
+        ttl:         AI_LM_IDLE_TTL_SECONDS,
         stream:      false,
       }),
       signal: ctrl.signal,
@@ -1986,6 +1989,7 @@ async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setS
   const catalog = buildAiCatalog(pool);
   const chunks = chunkArray(catalog, 250);
   const selectedIds = new Set();
+  const selectedRank = [];
   const suggestions = [];
   const reasons = [];
 
@@ -1993,16 +1997,27 @@ async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setS
     await setStatus(`Reading library chunk ${i + 1}/${chunks.length} (${chunks[i].length} movies)...`);
 
     const parsed = await callLmStudioForJson(endpoint, modelId, chunks[i], descriptions, setStatus);
-    parsed.selected.slice(0, 14).forEach(id => selectedIds.add(String(id)));
+    parsed.selected.slice(0, 14).forEach(id => {
+      const key = String(id);
+      if (!selectedIds.has(key)) selectedRank.push(key);
+      selectedIds.add(key);
+    });
     (parsed.suggestions ?? []).slice(0, 8).forEach(s => suggestions.push(s));
     if (parsed.reason) reasons.push(parsed.reason);
   }
 
-  const candidates = catalog.filter(m => selectedIds.has(String(m.id)));
+  const catalogById = new Map(catalog.map(m => [String(m.id), m]));
+  const rankedCandidates = selectedRank
+    .map(id => catalogById.get(id))
+    .filter(Boolean);
+  const candidates = rankedCandidates.length
+    ? rankedCandidates
+    : catalog.filter(m => selectedIds.has(String(m.id)));
+  const fallbackSelected = candidates.slice(0, MOVIES_COUNT).map(m => String(m.id));
 
   if (chunks.length <= 1 || candidates.length <= MOVIES_COUNT) {
     return {
-      selected: candidates.slice(0, MOVIES_COUNT).map(m => String(m.id)),
+      selected: fallbackSelected,
       suggestions: suggestions.slice(0, 8),
       reason: reasons[0] ?? 'AI matched the group preferences.',
     };
@@ -2010,12 +2025,23 @@ async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setS
 
   await setStatus(`Narrowing ${candidates.length} candidates into the final deck...`);
 
-  const finalParsed = await callLmStudioForJson(endpoint, modelId, candidates, descriptions, setStatus);
+  let finalParsed = null;
+  try {
+    finalParsed = await callLmStudioForJson(endpoint, modelId, candidates, descriptions, setStatus);
+  } catch (e) {
+    console.warn('AI final narrowing failed; using ranked chunk selections.', e);
+    await setStatus('Final narrowing failed; using the best chunk picks...');
+  }
+
+  const finalSelected = (finalParsed?.selected ?? [])
+    .map(String)
+    .filter(id => catalogById.has(id))
+    .slice(0, MOVIES_COUNT);
 
   return {
-    selected: finalParsed.selected,
-    suggestions: [...(finalParsed.suggestions ?? []), ...suggestions].slice(0, 8),
-    reason: finalParsed.reason ?? reasons[0] ?? 'AI matched the group preferences.',
+    selected: finalSelected.length ? finalSelected : fallbackSelected,
+    suggestions: [...(finalParsed?.suggestions ?? []), ...suggestions].slice(0, 8),
+    reason: finalParsed?.reason ?? reasons[0] ?? 'AI matched the group preferences.',
   };
 }
 

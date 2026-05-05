@@ -9,10 +9,11 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.8';
+const VERSION = '0.1.9';
 const DEFAULT_PORT = 8765;
 const DEFAULT_LISTEN_HOST = '0.0.0.0';
 const DEFAULT_HOST = '127.0.0.1';
+const DEFAULT_LM_TTL_SECONDS = 30 * 60;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PICKFLICK_DIR = path.join(__dirname, 'pickflick');
 const DATA_DIR = process.env.PICKFLICK_BRIDGE_DATA
@@ -82,6 +83,12 @@ function normalizeHost(input, fallback = DEFAULT_HOST, { allowWildcard = false }
 function normalizePort(input, fallback = DEFAULT_PORT) {
   const port = Number(input);
   return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : fallback;
+}
+
+function normalizeTtlSeconds(value, fallback = DEFAULT_LM_TTL_SECONDS) {
+  const ttl = Number(value);
+  if (!Number.isFinite(ttl)) return fallback;
+  return Math.max(60, Math.min(24 * 60 * 60, Math.round(ttl)));
 }
 
 function localSetupHost(listenHost) {
@@ -562,6 +569,7 @@ async function route(req, res) {
         ],
         temperature: Number.isFinite(body.temperature) ? body.temperature : 0.15,
         max_tokens: Number.isFinite(body.maxTokens) ? body.maxTokens : 4096,
+        ttl: normalizeTtlSeconds(body.ttl ?? body.ttlSeconds),
         stream: false,
       };
       const data = await fetchJson(`${baseUrl}/v1/chat/completions`, {
