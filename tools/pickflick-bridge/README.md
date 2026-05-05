@@ -25,6 +25,7 @@ The installer:
 - saves the selected LM Studio model, Radarr root folder, and Radarr quality profile in that database
 - writes settings with atomic replace + rolling backups so they survive reinstall and reboot
 - sends LM Studio a 10-minute idle TTL on AI requests so JIT-loaded models stay loaded across multi-chunk library reads
+- prompts AI to treat named studios, directors, franchises, genres, eras, languages, animation styles, and "only" requests as strict matching constraints
 - creates a desktop setup shortcut
 - creates `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PickFlick Bridge.bat` so the bridge starts when Windows signs in
 - serves a local copy of PickFlick at `http://<bridge-host>:8765/pickflick/` for phones that block GitHub Pages to local HTTP bridge calls

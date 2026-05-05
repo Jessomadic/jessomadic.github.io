@@ -1337,6 +1337,72 @@ function isSequel(m) {
   );
 }
 
+const STUDIO_GHIBLI_TITLE_KEYS = new Set([
+  'nausicaa of the valley of the wind',
+  'castle in the sky',
+  'grave of the fireflies',
+  'my neighbor totoro',
+  'kikis delivery service',
+  'only yesterday',
+  'porco rosso',
+  'ocean waves',
+  'pom poko',
+  'whisper of the heart',
+  'princess mononoke',
+  'my neighbors the yamadas',
+  'spirited away',
+  'the cat returns',
+  'howls moving castle',
+  'tales from earthsea',
+  'ponyo',
+  'arrietty',
+  'the secret world of arrietty',
+  'from up on poppy hill',
+  'the wind rises',
+  'the tale of the princess kaguya',
+  'when marnie was there',
+  'earwig and the witch',
+  'the boy and the heron',
+  'the red turtle',
+]);
+
+const KNOWN_CATALOG_HINTS = [
+  {
+    hint: 'studio_ghibli',
+    label: 'Studio Ghibli',
+    requestPattern: /\b(?:studio\s*)?g(?:h)?ibli\b|\bmiyazaki\b|\btotoro\b|\bspirited\s+away\b/i,
+    titleKeys: STUDIO_GHIBLI_TITLE_KEYS,
+  },
+];
+
+function normalizedTitleKey(title) {
+  return String(title || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function catalogHintsForMovie(movie) {
+  const key = normalizedTitleKey(movie?.title);
+  return KNOWN_CATALOG_HINTS
+    .filter(entry => entry.titleKeys.has(key))
+    .map(entry => entry.hint);
+}
+
+function activeCatalogHintsForDescriptions(descriptions) {
+  const text = Object.values(descriptions ?? {})
+    .map(d => String(d?.text || ''))
+    .join('\n');
+  return new Set(
+    KNOWN_CATALOG_HINTS
+      .filter(entry => entry.requestPattern.test(text))
+      .map(entry => entry.hint)
+  );
+}
+
 // Pick `count` movies, hard-filtering obvious numbered sequels.
 // Falls back to the unfiltered pool if filtering leaves us short.
 function pickMovies(movies, count) {
@@ -1828,15 +1894,19 @@ async function testLmConnection(endpoint) {
 
 // Build a compact movie catalog for LLM context (id, title, year, genres, short summary).
 function buildAiCatalog(rawMovies) {
-  return rawMovies.map(m => ({
-    id:      String(m.ratingKey),
-    t:       m.title ?? '',
-    y:       m.year  ?? '',
-    g:       (m.Genre ?? []).map(g => g.tag).slice(0, 4),
-    s:       (m.summary ?? '').slice(0, 120),
-    r:       m.rating ? parseFloat(m.rating).toFixed(1) : null,
-    dur:     m.duration ? Math.round(m.duration / 60000) : null,
-  }));
+  return rawMovies.map(m => {
+    const hints = catalogHintsForMovie(m);
+    return {
+      id:      String(m.ratingKey),
+      t:       m.title ?? '',
+      y:       m.year  ?? '',
+      g:       (m.Genre ?? []).map(g => g.tag).slice(0, 4),
+      h:       hints.length ? hints : undefined,
+      s:       (m.summary ?? '').slice(0, 120),
+      r:       m.rating ? parseFloat(m.rating).toFixed(1) : null,
+      dur:     m.duration ? Math.round(m.duration / 60000) : null,
+    };
+  });
 }
 
 function buildAiSystemPrompt() {
@@ -1844,7 +1914,7 @@ function buildAiSystemPrompt() {
 
 You will receive:
 1. Each participant's description of what mood, tone, or type of film they want tonight
-2. A JSON catalog of movies they already own: id, t=title, y=year, g=genres, s=summary, r=rating, dur=duration in minutes
+2. A JSON catalog of movies they already own: id, t=title, y=year, g=genres, h=curation hints, s=summary, r=rating, dur=duration in minutes
 
 Your task has TWO parts:
 
@@ -1852,6 +1922,12 @@ PART 1 — "selected": Pick 20–30 movies from the catalog that best match ever
 - Use the exact "id" field from the catalog
 - Treat every participant as equal weight. Do not let the longest, most specific, loudest, or first preference dominate the whole list.
 - Build a balanced slate: include clear matches for each participant, then prioritize overlap movies that satisfy multiple people.
+- Named requests are binding, not loose vibes. If someone names a studio, director, franchise, actor, genre, country/region, era, animation style, language, or specific type of movie, first select catalog movies that directly satisfy that request.
+- Words like "only", "just", "all", "must be", "no", "avoid", "like X", and "movies similar to X" are high-priority constraints. Obey them literally whenever the catalog allows it.
+- Correct obvious misspellings and shorthand when intent is clear, for example "Studio Gibli" means Studio Ghibli.
+- Catalog hints in "h" are direct-match signals. If a user asks for something represented by a hint, those movies are stronger matches than merely adjacent movies.
+- Do not substitute adjacent mainstream alternatives for a named request. Example: if the request is Studio Ghibli/anime/hand-drawn fantasy, Disney/Pixar family animation is a weak fallback, not a direct match, unless Disney/Pixar was requested.
+- If the requested type/studio exists in the catalog, include those direct matches before broadening to "similar to" options.
 - If preferences conflict, split the slate fairly across the different moods instead of choosing only one person's lane.
 - Respect mood intensity. If someone asks for calming, cozy, sick-day, or low-stress comfort, avoid making the whole deck intense, bleak, scary, or exhausting.
 - Favour variety: mix genres, eras, runtimes, emotional intensity, and energy levels when tastes differ.
@@ -1883,8 +1959,26 @@ function buildAiUserPrompt(catalog, descriptions) {
     .filter(d => d?.text?.trim())
     .map(d => `${d.name}: "${d.text.trim()}"`)
     .join('\n');
+  const activeHints = [...activeCatalogHintsForDescriptions(descriptions)];
+  const hintNote = activeHints.length
+    ? `\n\nKNOWN DIRECT CATALOG MATCHES REQUESTED:\n${activeHints.map(hint => {
+        const entry = KNOWN_CATALOG_HINTS.find(item => item.hint === hint);
+        return `- ${hint}: ${entry?.label || hint} movies already in the catalog are direct matches. Select them before adjacent alternatives.`;
+      }).join('\n')}`
+    : '';
+  const strictNote = '\n\nSTRICT MATCHING RULE:\nWhen a participant asks for a specific studio, director, franchise, genre, era, country, language, animation style, or says "only", treat that as a hard constraint. Direct catalog matches should appear before broader vibe matches.';
 
-  return `WHAT EVERYONE WANTS TONIGHT:\n${prefs}\n\nMOVIES ALREADY IN PLEX:\n${JSON.stringify(catalog)}`;
+  return `WHAT EVERYONE WANTS TONIGHT:\n${prefs}${strictNote}${hintNote}\n\nMOVIES ALREADY IN PLEX:\n${JSON.stringify(catalog)}`;
+}
+
+function prioritizeSelectedIdsForPreferences(selectedIds, pool, descriptions) {
+  const ids = selectedIds.map(String);
+  const activeHints = activeCatalogHintsForDescriptions(descriptions);
+  if (!activeHints.size) return ids;
+  const directHintIds = pool
+    .filter(m => catalogHintsForMovie(m).some(hint => activeHints.has(hint)))
+    .map(m => String(m.ratingKey));
+  return [...new Set([...directHintIds, ...ids])];
 }
 
 async function callLmStudio(endpoint, modelId, systemPrompt, userPrompt) {
@@ -2039,7 +2133,11 @@ async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setS
     .slice(0, MOVIES_COUNT);
 
   return {
-    selected: finalSelected.length ? finalSelected : fallbackSelected,
+    selected: prioritizeSelectedIdsForPreferences(
+      finalSelected.length ? finalSelected : fallbackSelected,
+      pool,
+      descriptions
+    ),
     suggestions: [...(finalParsed?.suggestions ?? []), ...suggestions].slice(0, 8),
     reason: finalParsed?.reason ?? reasons[0] ?? 'AI matched the group preferences.',
   };
