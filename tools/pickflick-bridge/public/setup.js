@@ -53,6 +53,8 @@ function buildBridgeUrl(host, port) {
 function setBridgeUrlText(url) {
   $('bridge-url').textContent = url;
   $('bridge-url-copy').textContent = url;
+  const phoneUrl = `${String(url || '').replace(/\/+$/, '')}/pickflick/`;
+  $('phone-app-url').textContent = phoneUrl;
 }
 
 async function api(path, options = {}) {

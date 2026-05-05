@@ -9,11 +9,12 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.7';
+const VERSION = '0.1.8';
 const DEFAULT_PORT = 8765;
 const DEFAULT_LISTEN_HOST = '0.0.0.0';
 const DEFAULT_HOST = '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const PICKFLICK_DIR = path.join(__dirname, 'pickflick');
 const DATA_DIR = process.env.PICKFLICK_BRIDGE_DATA
   || path.join(process.env.LOCALAPPDATA || os.homedir(), 'PickFlickBridge');
 const DB_PATH = process.env.PICKFLICK_BRIDGE_DB
@@ -447,6 +448,10 @@ function mimeFor(filePath) {
   if (ext === '.js') return 'text/javascript; charset=utf-8';
   if (ext === '.css') return 'text/css; charset=utf-8';
   if (ext === '.svg') return 'image/svg+xml';
+  if (ext === '.png') return 'image/png';
+  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  if (ext === '.webp') return 'image/webp';
+  if (ext === '.ico') return 'image/x-icon';
   return 'application/octet-stream';
 }
 
@@ -474,6 +479,18 @@ async function route(req, res) {
     if (req.method === 'GET' && pathname.startsWith('/setup.')) {
       const target = path.resolve(PUBLIC_DIR, pathname.slice(1));
       if (!target.startsWith(PUBLIC_DIR)) throw new Error('Invalid static path');
+      staticFile(target, mimeFor(target), res);
+      return;
+    }
+    if (req.method === 'GET' && pathname === '/pickflick') {
+      res.writeHead(302, { Location: '/pickflick/' });
+      res.end();
+      return;
+    }
+    if (req.method === 'GET' && pathname.startsWith('/pickflick/')) {
+      const relativePath = decodeURIComponent(pathname.replace(/^\/pickflick\/?/, '')) || 'index.html';
+      const target = path.resolve(PICKFLICK_DIR, relativePath);
+      if (!target.startsWith(`${PICKFLICK_DIR}${path.sep}`)) throw new Error('Invalid PickFlick static path');
       staticFile(target, mimeFor(target), res);
       return;
     }

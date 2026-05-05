@@ -26,6 +26,7 @@ The installer:
 - writes settings with atomic replace + rolling backups so they survive reinstall and reboot
 - creates a desktop setup shortcut
 - creates `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PickFlick Bridge.bat` so the bridge starts when Windows signs in
+- serves a local copy of PickFlick at `http://<bridge-host>:8765/pickflick/` for phones that block GitHub Pages to local HTTP bridge calls
 - opens `http://127.0.0.1:8765/setup`
 - listens on all local addresses by default so the Windows host and phones on the LAN can both reach it
 
@@ -49,6 +50,12 @@ http://127.0.0.1:8765
 ```
 
 On a phone or another device, use the Windows machine's LAN IP from setup, for example `http://192.168.1.6:8765`.
+
+If the GitHub Pages site cannot connect from a phone, open the local bridge-hosted app on the phone instead:
+
+```text
+http://192.168.1.6:8765/pickflick/
+```
 
 Keep the bridge running while the host is finding movies with AI or adding a non-library suggestion to Radarr.
 

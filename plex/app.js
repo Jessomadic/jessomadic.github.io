@@ -1614,8 +1614,13 @@ function setAiConnectionMode(mode) {
 function isBridgeMode() {
   return getAiConnectionMode() === 'bridge';
 }
+function getDefaultBridgeUrl() {
+  return location.protocol === 'http:' && location.pathname.startsWith('/pickflick')
+    ? location.origin
+    : '';
+}
 function getBridgeUrl() {
-  return sessionStorage.getItem('pf_bridge_url') || '';
+  return sessionStorage.getItem('pf_bridge_url') || getDefaultBridgeUrl();
 }
 function setBridgeUrl(url) {
   const normalized = normalizeEndpoint(url || 'http://127.0.0.1:8765');
@@ -1626,6 +1631,13 @@ function normalizeEndpoint(url) {
   const raw = String(url || '').trim().replace(/\/$/, '');
   if (!raw) return '';
   return /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+}
+function localBridgeBrowserHint(baseUrl) {
+  const isPrivateHttp = /^http:\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.0\.0\.1|localhost)/i.test(baseUrl || '');
+  if (location.protocol === 'https:' && isPrivateHttp) {
+    return ' Phone browsers can block GitHub Pages from calling a local HTTP bridge. Open the local PickFlick app from the bridge instead: replace /health with /pickflick/ on the bridge URL.';
+  }
+  return '';
 }
 
 async function bridgeFetch(path, options = {}) {
@@ -1656,7 +1668,7 @@ async function testBridgeConnection(url) {
   } catch (e) {
     clearTimeout(t);
     if (e.name === 'AbortError') throw new Error('Timed out reaching PickFlick Bridge. Is it running?');
-    throw new Error(`Cannot reach PickFlick Bridge: ${e.message}`);
+    throw new Error(`Cannot reach PickFlick Bridge: ${e.message}.${localBridgeBrowserHint(baseUrl)}`);
   }
 }
 

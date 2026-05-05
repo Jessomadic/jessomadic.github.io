@@ -162,6 +162,18 @@ foreach ($item in $items) {
   Copy-Item -LiteralPath $src -Destination $dst -Recurse -Force
 }
 
+$repoRoot = Split-Path -Parent (Split-Path -Parent $source)
+$pickflickSource = Join-Path $repoRoot "plex"
+$pickflickApp = Join-Path $app "pickflick"
+if (Test-Path $pickflickApp) { Remove-Item -LiteralPath $pickflickApp -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $pickflickApp | Out-Null
+foreach ($item in @("index.html", "app.js", "firebase-config.js")) {
+  $src = Join-Path $pickflickSource $item
+  if (Test-Path $src) {
+    Copy-Item -LiteralPath $src -Destination (Join-Path $pickflickApp $item) -Force
+  }
+}
+
 $configPath = Join-Path $base "config.json"
 $dbPath = Join-Path $base "settings.db.json"
 try {
@@ -217,6 +229,7 @@ if (-not $NoStartupShortcut) { Write-Host "Startup batch: $startupBatch" }
 if (Test-Path $configPath) { Write-Host "Legacy config migration source: $configPath" }
 Write-Host "Setup URL: http://127.0.0.1:$Port/setup"
 Write-Host "PickFlick Bridge URL: http://$publicHost`:$Port"
+Write-Host "Phone PickFlick URL: http://$publicHost`:$Port/pickflick/"
 
 if (-not $NoStart) {
   Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$startScript`" -OpenSetup"
