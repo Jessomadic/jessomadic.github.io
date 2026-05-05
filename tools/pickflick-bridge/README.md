@@ -21,6 +21,8 @@ The installer:
 - checks for Node.js 18 or newer
 - stops an already-running PickFlick Bridge on the same port before updating files
 - copies the bridge to `%LOCALAPPDATA%\PickFlickBridge\app`
+- migrates existing `config.json` settings into `%LOCALAPPDATA%\PickFlickBridge\settings.db.json`
+- writes settings with atomic replace + rolling backups so they survive reinstall and reboot
 - creates a desktop setup shortcut
 - creates a startup shortcut so the bridge starts when Windows signs in
 - opens `http://127.0.0.1:8765/setup`
@@ -50,6 +52,16 @@ On a phone or another device, use the Windows machine's LAN IP from setup, for e
 Keep the bridge running while the host is finding movies with AI or adding a non-library suggestion to Radarr.
 
 If the setup page says `Restart needed`, rerun `.\Install-PickFlickBridge.ps1` from this folder. That means the browser loaded updated setup files while an older bridge process was still running.
+
+## Settings Storage
+
+Bridge settings are stored locally at:
+
+```text
+%LOCALAPPDATA%\PickFlickBridge\settings.db.json
+```
+
+The older `%LOCALAPPDATA%\PickFlickBridge\config.json` file is only used as a migration fallback. The database file is never pushed to GitHub and can contain local IPs/API keys.
 
 ## API
 

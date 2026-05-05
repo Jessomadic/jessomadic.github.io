@@ -9,15 +9,19 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.5';
+const VERSION = '0.1.6';
 const DEFAULT_PORT = 8765;
 const DEFAULT_LISTEN_HOST = '0.0.0.0';
 const DEFAULT_HOST = '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = process.env.PICKFLICK_BRIDGE_DATA
   || path.join(process.env.LOCALAPPDATA || os.homedir(), 'PickFlickBridge');
+const DB_PATH = process.env.PICKFLICK_BRIDGE_DB
+  || path.join(DATA_DIR, 'settings.db.json');
 const CONFIG_PATH = process.env.PICKFLICK_BRIDGE_CONFIG
   || path.join(DATA_DIR, 'config.json');
+const DB_SCHEMA = 'pickflick-bridge-settings';
+const DB_VERSION = 1;
 
 const ALLOWED_ORIGINS = new Set([
   'https://jessomadic.github.io',
@@ -35,6 +39,7 @@ const FEATURES = {
   setupUrlParsing: true,
   bridgeHostConfig: true,
   radarrPreflight: true,
+  persistentSettingsDb: true,
 };
 
 function localIpv4Hosts() {
@@ -88,6 +93,63 @@ function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+function readJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''));
+}
+
+function backupFile(filePath, suffix = 'bak') {
+  if (!fs.existsSync(filePath)) return null;
+  const backupPath = `${filePath}.${suffix}.${timestampForFile()}`;
+  fs.copyFileSync(filePath, backupPath);
+  return backupPath;
+}
+
+function timestampForFile() {
+  return new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+}
+
+function pruneBackups(filePath, keep = 8) {
+  const dir = path.dirname(filePath);
+  const base = path.basename(filePath);
+  const backups = fs.readdirSync(dir)
+    .filter(name => name.startsWith(`${base}.bak.`))
+    .map(name => ({
+      name,
+      path: path.join(dir, name),
+      mtimeMs: fs.statSync(path.join(dir, name)).mtimeMs,
+    }))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+  backups.slice(keep).forEach(entry => {
+    try { fs.unlinkSync(entry.path); } catch { /* best effort */ }
+  });
+}
+
+function atomicWriteJson(filePath, data) {
+  ensureDataDir();
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
+  if (fs.existsSync(filePath)) {
+    backupFile(filePath);
+    pruneBackups(filePath);
+  }
+  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  const payload = JSON.stringify(data, null, 2);
+  const fd = fs.openSync(tempPath, 'w');
+  try {
+    fs.writeFileSync(fd, payload, 'utf8');
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+  fs.renameSync(tempPath, filePath);
+}
+
+function unwrapSettingsDocument(doc) {
+  if (doc?.schema === DB_SCHEMA && doc?.data) return doc.data;
+  if (doc?.data?.bridge || doc?.data?.lmStudio || doc?.data?.radarr) return doc.data;
+  return doc;
+}
+
 function defaultConfig() {
   return {
     bridge: {
@@ -111,14 +173,34 @@ function defaultConfig() {
 
 function loadConfig() {
   ensureDataDir();
+  let loaded = null;
+  let source = 'default';
+
   try {
-    const loaded = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8').replace(/^\uFEFF/, ''));
-    return mergeConfig(defaultConfig(), loaded);
-  } catch {
-    const config = defaultConfig();
-    saveConfig(config);
-    return config;
+    if (fs.existsSync(DB_PATH)) {
+      loaded = unwrapSettingsDocument(readJsonFile(DB_PATH));
+      source = 'db';
+    }
+  } catch (e) {
+    backupFile(DB_PATH, 'corrupt');
+    console.error(`Could not read settings database ${DB_PATH}: ${e.message}`);
   }
+
+  if (!loaded) {
+    try {
+      if (fs.existsSync(CONFIG_PATH)) {
+        loaded = readJsonFile(CONFIG_PATH);
+        source = 'legacy config';
+      }
+    } catch (e) {
+      backupFile(CONFIG_PATH, 'corrupt');
+      console.error(`Could not read legacy config ${CONFIG_PATH}: ${e.message}`);
+    }
+  }
+
+  const merged = mergeConfig(defaultConfig(), loaded || {});
+  if (source !== 'db') saveConfig(merged);
+  return merged;
 }
 
 function mergeConfig(base, loaded) {
@@ -141,8 +223,14 @@ function mergeConfig(base, loaded) {
 }
 
 function saveConfig(config) {
-  ensureDataDir();
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+  const merged = mergeConfig(defaultConfig(), config || {});
+  atomicWriteJson(DB_PATH, {
+    schema: DB_SCHEMA,
+    version: DB_VERSION,
+    updatedAt: new Date().toISOString(),
+    data: merged,
+  });
+  return merged;
 }
 
 let config = loadConfig();

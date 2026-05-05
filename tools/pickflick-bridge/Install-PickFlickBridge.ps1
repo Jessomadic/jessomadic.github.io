@@ -87,6 +87,45 @@ function Write-Utf8NoBom {
   [System.IO.File]::WriteAllText($Path, $Value, $encoding)
 }
 
+function Read-SettingsData {
+  param(
+    [string]$DbPath,
+    [string]$ConfigPath
+  )
+
+  if (Test-Path $DbPath) {
+    $doc = Get-Content -Raw -LiteralPath $DbPath | ConvertFrom-Json
+    if ($doc.schema -eq "pickflick-bridge-settings" -and $doc.data) { return $doc.data }
+    if ($doc.data -and ($doc.data.bridge -or $doc.data.lmStudio -or $doc.data.radarr)) { return $doc.data }
+    return $doc
+  }
+
+  if (Test-Path $ConfigPath) {
+    return Get-Content -Raw -LiteralPath $ConfigPath | ConvertFrom-Json
+  }
+
+  return $null
+}
+
+function Write-SettingsDb {
+  param(
+    [string]$DbPath,
+    [object]$Data
+  )
+
+  if (Test-Path $DbPath) {
+    $backupPath = "$DbPath.bak.$(Get-Date -Format 'yyyyMMddHHmmss')"
+    Copy-Item -LiteralPath $DbPath -Destination $backupPath -Force
+  }
+  $doc = [ordered]@{
+    schema = "pickflick-bridge-settings"
+    version = 1
+    updatedAt = (Get-Date).ToUniversalTime().ToString("o")
+    data = $Data
+  } | ConvertTo-Json -Depth 10
+  Write-Utf8NoBom -Path $DbPath -Value $doc
+}
+
 Require-Node
 
 $source = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -110,35 +149,38 @@ foreach ($item in $items) {
 }
 
 $configPath = Join-Path $base "config.json"
-if (-not (Test-Path $configPath)) {
-  $config = @{
-    bridge = @{ host = $publicHost; listenHost = $bindHost; port = $Port }
-    lmStudio = @{ baseUrl = ""; modelId = ""; apiKey = "" }
-    radarr = @{ baseUrl = ""; apiKey = ""; rootFolderPath = ""; qualityProfileId = $null }
-  } | ConvertTo-Json -Depth 5
-  Write-Utf8NoBom -Path $configPath -Value $config
-} else {
-  try {
-    $backupPath = "$configPath.bak.$(Get-Date -Format 'yyyyMMddHHmmss')"
-    Copy-Item -LiteralPath $configPath -Destination $backupPath -Force
-    $cfg = Get-Content -Raw -LiteralPath $configPath | ConvertFrom-Json
-    if (-not $cfg.bridge) {
-      $cfg | Add-Member -NotePropertyName bridge -NotePropertyValue ([pscustomobject]@{}) -Force
+$dbPath = Join-Path $base "settings.db.json"
+try {
+  $cfg = Read-SettingsData -DbPath $dbPath -ConfigPath $configPath
+  if (-not $cfg) {
+    $cfg = [pscustomobject]@{
+      bridge = [pscustomobject]@{ host = $publicHost; listenHost = $bindHost; port = $Port }
+      lmStudio = [pscustomobject]@{ baseUrl = ""; modelId = ""; apiKey = "" }
+      radarr = [pscustomobject]@{ baseUrl = ""; apiKey = ""; rootFolderPath = ""; qualityProfileId = $null }
     }
-    if (-not $cfg.bridge.host) {
-      $cfg.bridge | Add-Member -NotePropertyName host -NotePropertyValue $publicHost -Force
-    }
-    if (-not $cfg.bridge.listenHost) {
-      $cfg.bridge | Add-Member -NotePropertyName listenHost -NotePropertyValue $bindHost -Force
-    }
-    if (-not $cfg.bridge.port) {
-      $cfg.bridge | Add-Member -NotePropertyName port -NotePropertyValue $Port -Force
-    }
-    Write-Utf8NoBom -Path $configPath -Value ($cfg | ConvertTo-Json -Depth 8)
-    $publicHost = [string]$cfg.bridge.host
-  } catch {
-    throw "Could not update existing bridge config at $configPath`: $($_.Exception.Message)"
   }
+  if (-not $cfg.bridge) {
+    $cfg | Add-Member -NotePropertyName bridge -NotePropertyValue ([pscustomobject]@{}) -Force
+  }
+  if (-not $cfg.lmStudio) {
+    $cfg | Add-Member -NotePropertyName lmStudio -NotePropertyValue ([pscustomobject]@{ baseUrl = ""; modelId = ""; apiKey = "" }) -Force
+  }
+  if (-not $cfg.radarr) {
+    $cfg | Add-Member -NotePropertyName radarr -NotePropertyValue ([pscustomobject]@{ baseUrl = ""; apiKey = ""; rootFolderPath = ""; qualityProfileId = $null }) -Force
+  }
+  if (-not $cfg.bridge.host) {
+    $cfg.bridge | Add-Member -NotePropertyName host -NotePropertyValue $publicHost -Force
+  }
+  if (-not $cfg.bridge.listenHost) {
+    $cfg.bridge | Add-Member -NotePropertyName listenHost -NotePropertyValue $bindHost -Force
+  }
+  if (-not $cfg.bridge.port) {
+    $cfg.bridge | Add-Member -NotePropertyName port -NotePropertyValue $Port -Force
+  }
+  Write-SettingsDb -DbPath $dbPath -Data $cfg
+  $publicHost = [string]$cfg.bridge.host
+} catch {
+  throw "Could not initialize bridge settings database at $dbPath`: $($_.Exception.Message)"
 }
 
 $shell = New-Object -ComObject WScript.Shell
@@ -160,7 +202,8 @@ $shortcut.Description = "Open PickFlick Bridge setup"
 $shortcut.Save()
 
 Write-Host "PickFlick Bridge installed to: $app"
-Write-Host "Config stored at: $configPath"
+Write-Host "Settings database: $dbPath"
+if (Test-Path $configPath) { Write-Host "Legacy config migration source: $configPath" }
 Write-Host "Setup URL: http://127.0.0.1:$Port/setup"
 Write-Host "PickFlick Bridge URL: http://$publicHost`:$Port"
 
