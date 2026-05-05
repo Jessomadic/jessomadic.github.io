@@ -9,11 +9,11 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const VERSION = '0.1.9';
+const VERSION = '0.1.10';
 const DEFAULT_PORT = 8765;
 const DEFAULT_LISTEN_HOST = '0.0.0.0';
 const DEFAULT_HOST = '127.0.0.1';
-const DEFAULT_LM_TTL_SECONDS = 30 * 60;
+const DEFAULT_LM_TTL_SECONDS = 10 * 60;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PICKFLICK_DIR = path.join(__dirname, 'pickflick');
 const DATA_DIR = process.env.PICKFLICK_BRIDGE_DATA

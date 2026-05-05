@@ -24,7 +24,7 @@ The installer:
 - migrates existing `config.json` settings into `%LOCALAPPDATA%\PickFlickBridge\settings.db.json`
 - saves the selected LM Studio model, Radarr root folder, and Radarr quality profile in that database
 - writes settings with atomic replace + rolling backups so they survive reinstall and reboot
-- sends LM Studio a 30-minute idle TTL on AI requests so JIT-loaded models stay loaded across multi-chunk library reads
+- sends LM Studio a 10-minute idle TTL on AI requests so JIT-loaded models stay loaded across multi-chunk library reads
 - creates a desktop setup shortcut
 - creates `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PickFlick Bridge.bat` so the bridge starts when Windows signs in
 - serves a local copy of PickFlick at `http://<bridge-host>:8765/pickflick/` for phones that block GitHub Pages to local HTTP bridge calls

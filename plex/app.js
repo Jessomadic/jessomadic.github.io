@@ -15,7 +15,7 @@ const POLL_INTERVAL  = 2000;  // ms between Plex PIN polls
 const AUTH_TIMEOUT   = 5 * 60 * 1000; // 5 min
 const AI_LM_MAX_TOKENS = 4096;
 const AI_LM_TEMPERATURE = 0.15;
-const AI_LM_IDLE_TTL_SECONDS = 30 * 60;
+const AI_LM_IDLE_TTL_SECONDS = 10 * 60;
 
 // TMDB image CDN — no auth required once you have the poster_path.
 // API key is injected by CI from the TMDB_API_KEY GitHub Actions secret.
@@ -2023,7 +2023,7 @@ async function runChunkedAiSelection(endpoint, modelId, pool, descriptions, setS
     };
   }
 
-  await setStatus(`Narrowing ${candidates.length} candidates into the final deck...`);
+  await setStatus('Narrowing the best chunk picks into the final deck...');
 
   let finalParsed = null;
   try {
