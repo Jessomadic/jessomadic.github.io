@@ -15,7 +15,7 @@ Best Evidence
 - Repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware as a field technician.
 
 Relevant Keywords
-IT support, help desk, desktop support, user support, remote support, on-site support, Active Directory, ServiceNow, Citrix Workspace, Epic support, account permissions, password resets, malware cleanup, MSP support, hardware repair, printer repair, server repair, endpoint deployment.
+IT support, help desk, desktop support, user support, remote support, on-site support, Active Directory, Microsoft Entra, identity administration, ServiceNow, Citrix Workspace, Epic support, account permissions, password resets, malware cleanup, MSP support, hardware repair, printer repair, server repair, endpoint deployment.
 
 Projects That Support This Fit
 - Active Directory User Export Tool: reduced large user-information requests from hours or days to seconds.

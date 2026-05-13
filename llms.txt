@@ -29,7 +29,7 @@ Jesse has hands-on IT support and engineering experience across MSP, enterprise,
 
 ## Keyword Map
 
-IT support, technical engineer, endpoint deployment, Windows deployment, Active Directory, Group Policy, help desk, ServiceNow, Citrix Workspace, Epic support, MSP, field service, hardware repair, server repair, printer repair, scripting, automation, Batch, Python, Clojure, PDF generation, SonicWall, 3CX, HP enterprise service, CompTIA A+.
+IT support, technical engineer, endpoint deployment, Windows deployment, Active Directory, Microsoft Entra, SC-300T00-A, identity administration, Group Policy, help desk, ServiceNow, Citrix Workspace, Epic support, MSP, field service, hardware repair, server repair, printer repair, scripting, automation, Batch, Python, Clojure, PDF generation, SonicWall, 3CX, HP enterprise service, CompTIA A+.
 
 ## Current Focus
 
@@ -58,5 +58,6 @@ IT support, technical engineer, endpoint deployment, Windows deployment, Active 
 - CompTIA A+
 - SonicWall Network Security Administrator (SNSA)
 - 3CX Basic Certified Engineer
+- Microsoft Entra SC-300T00-A Certified
 - HP Enterprise Server Service Certification
 - HP A3/A4 Printer Repair Certifications

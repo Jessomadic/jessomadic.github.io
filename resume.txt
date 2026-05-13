@@ -12,7 +12,7 @@ Target Roles
 Technical Engineer; IT Support Engineer; Systems Support Specialist; Endpoint Deployment Technician; Help Desk Analyst; Field Service Technician; Desktop Support Engineer; MSP Technician; Junior Systems Administrator.
 
 Core Strengths
-IT support; endpoint deployment; Windows deployment; imaging workflows; Active Directory; Group Policy; help desk operations; ServiceNow; Citrix Workspace; Epic support; MSP client support; field service; enterprise hardware repair; server repair; printer repair; scripting; automation; Batch; Python; Clojure; SonicWall; 3CX; HP enterprise hardware; CompTIA A+.
+IT support; endpoint deployment; Windows deployment; imaging workflows; Active Directory; Microsoft Entra; SC-300T00-A; identity administration; Group Policy; help desk operations; ServiceNow; Citrix Workspace; Epic support; MSP client support; field service; enterprise hardware repair; server repair; printer repair; scripting; automation; Batch; Python; Clojure; SonicWall; 3CX; HP enterprise hardware; CompTIA A+.
 
 Experience
 Microworx, Technical Engineer, April 2024 - Present
@@ -60,4 +60,4 @@ DungeonMasterVault
 - Repository: https://github.com/Orcpub/orcpub
 
 Certifications
-CompTIA A+ Certification; SonicWall Network Security Administrator (SNSA); 3CX Basic Certified Engineer; HP Enterprise Server Service Certification; HP A3/A4 Printer Repair Certifications.
+CompTIA A+ Certification; SonicWall Network Security Administrator (SNSA); 3CX Basic Certified Engineer; Microsoft Entra SC-300T00-A Certified; HP Enterprise Server Service Certification; HP A3/A4 Printer Repair Certifications.

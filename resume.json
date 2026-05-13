@@ -45,7 +45,7 @@
     },
     {
       "name": "Directory and Enterprise Tools",
-      "keywords": ["Active Directory", "Group Policy", "Citrix Workspace", "ServiceNow", "Epic support"]
+      "keywords": ["Active Directory", "Microsoft Entra", "SC-300T00-A", "identity administration", "Group Policy", "Citrix Workspace", "ServiceNow", "Epic support"]
     },
     {
       "name": "Automation and Scripting",
@@ -131,6 +131,7 @@
     { "name": "CompTIA A+ Certification", "issuer": "CompTIA" },
     { "name": "SonicWall Network Security Administrator (SNSA)", "issuer": "SonicWall" },
     { "name": "3CX Basic Certified Engineer", "issuer": "3CX" },
+    { "name": "Microsoft Entra SC-300T00-A Certified", "issuer": "Microsoft" },
     { "name": "HP Enterprise Server Service Certification", "issuer": "HP" },
     { "name": "HP A3/A4 Printer Repair Certifications", "issuer": "HP" }
   ]

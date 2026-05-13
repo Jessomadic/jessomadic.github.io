@@ -294,15 +294,17 @@ html.dark .timeline-item::after {
 .carousel-track,
 .carousel-track-reverse {
   display: flex;
+  min-width: max-content;
   width: max-content;
+  will-change: transform;
 }
 
 .carousel-track {
-  animation: scroll 32s linear infinite;
+  animation: scroll 42s linear infinite;
 }
 
 .carousel-track-reverse {
-  animation: scroll-reverse 32s linear infinite;
+  animation: scroll-reverse 42s linear infinite;
 }
 
 .carousel-container:hover .carousel-track,
@@ -314,7 +316,8 @@ html.dark .timeline-item::after {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-right: 1.25rem;
+  flex: 0 0 auto;
+  margin-right: 1.5rem;
   white-space: nowrap;
 }
 
@@ -355,10 +358,12 @@ html.dark .skill-name-text {
 
 @media (prefers-reduced-motion: reduce) {
   .carousel-track,
-  .carousel-track-reverse,
+  .carousel-track-reverse {
+    animation-duration: 90s;
+  }
+
   .project-card,
   .project-image {
-    animation: none;
     transition: none;
   }
 }
