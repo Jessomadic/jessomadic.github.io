@@ -305,6 +305,7 @@ html.dark .timeline-item::after {
 
 .carousel-track-reverse {
   animation: scroll-reverse 42s linear infinite;
+  animation-delay: -21s;
 }
 
 .carousel-container:hover .carousel-track,
@@ -360,6 +361,10 @@ html.dark .skill-name-text {
   .carousel-track,
   .carousel-track-reverse {
     animation-duration: 90s;
+  }
+
+  .carousel-track-reverse {
+    animation-delay: -45s;
   }
 
   .project-card,
