@@ -109,6 +109,12 @@
   ],
   "projects": [
     {
+      "name": "Internal Ticketing & POS Operations System",
+      "description": "Internal ticketing platform built with Python, JavaScript, and MSSQL to track work, time, pricing, parts, and computer builds while integrating with the company POS system.",
+      "url": "",
+      "keywords": ["Python", "JavaScript", "MSSQL", "ticketing system", "POS integration", "internal tooling", "operations tracking"]
+    },
+    {
       "name": "Automated Computer Setup Script",
       "description": "Customizable Windows deployment automation that reduced new computer configuration by more than an hour per machine.",
       "url": "https://github.com/Jessomadic/NewComputerSetup/tree/Main",

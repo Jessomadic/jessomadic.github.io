@@ -18,6 +18,7 @@ Relevant Keywords
 IT support, help desk, desktop support, user support, remote support, on-site support, Active Directory, Microsoft Entra, identity administration, ServiceNow, Citrix Workspace, Epic support, account permissions, password resets, malware cleanup, MSP support, hardware repair, printer repair, server repair, endpoint deployment.
 
 Projects That Support This Fit
+- Internal Ticketing & POS Operations System: internal Python, JavaScript, and MSSQL platform for tracking work, time, pricing, parts, computer builds, and POS integration.
 - Active Directory User Export Tool: reduced large user-information requests from hours or days to seconds.
 - Automated Computer Setup Script: reduced new computer configuration by more than an hour per machine.
 

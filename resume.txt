@@ -47,6 +47,10 @@ The Home Depot, Electrical Associate, Nov 2018 - April 2020
 - Advised customers and contractors on electrical products, smart home devices, setup, and troubleshooting.
 
 Selected Projects
+Internal Ticketing & POS Operations System
+- Built an internal ticketing platform with Python, JavaScript, and MSSQL to track work, time, pricing, parts, and computer builds while integrating seamlessly with the company POS system.
+- Internal-only project, no public repository.
+
 Automated Computer Setup Script
 - Windows deployment automation that reduced new computer configuration by more than an hour per machine.
 - Repository: https://github.com/Jessomadic/NewComputerSetup/tree/Main

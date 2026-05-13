@@ -26,6 +26,7 @@ Jesse has hands-on IT support and engineering experience across MSP, enterprise,
 - Scale: University of Rochester Medical Center support environment included 45,000 employees, 20,000 devices, and 400+ applications.
 - Help desk volume: Worked in a 15-person team handling 500-1000 daily calls.
 - Field repair: Handled HP enterprise field service tickets across laptops, desktops, printers, servers, and storage hardware.
+- Internal operations tooling: Built an internal ticketing platform using Python, JavaScript, and MSSQL to track work, time, pricing, parts, and computer builds while integrating with the company POS system.
 
 ## Keyword Map
 
@@ -49,6 +50,7 @@ IT support, technical engineer, endpoint deployment, Windows deployment, Active 
 
 ## Selected Projects
 
+- Internal Ticketing & POS Operations System: Internal-only Python, JavaScript, and MSSQL platform for tickets, time, pricing, parts, computer builds, and POS integration.
 - Automated Computer Setup Script: Windows deployment automation that reduced new computer configuration by more than an hour per machine.
 - Active Directory User Export Tool: AD support utility that reduced large user-information requests from hours or days to seconds.
 - DungeonMasterVault: Clojure PDF generation maintenance for a widely used free SRD 5e character creator.

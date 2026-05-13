@@ -18,6 +18,7 @@ Relevant Keywords
 systems support, technical engineer, junior systems administrator, IT support engineer, MSP technician, Active Directory, Microsoft Entra, SC-300T00-A, identity administration, Group Policy, ServiceNow, Citrix Workspace, Python, SQL workflows, ticketing modernization, endpoint deployment, hardware support, server support, printer support, user support, support automation.
 
 Projects That Support This Fit
+- Internal Ticketing & POS Operations System: Python, JavaScript, and MSSQL platform for internal tickets, time, pricing, parts, computer builds, and POS integration.
 - Active Directory User Export Tool: reduced large user-information requests from hours or days to seconds.
 - Automated Computer Setup Script: reduced new computer setup time and improved deployment consistency.
 - DungeonMasterVault: maintained Clojure-based PDF generation for a widely used open-source application.
