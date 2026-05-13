@@ -1,0 +1,27 @@
+Jesse Copas - IT Support Role-Fit Summary
+
+Target Roles
+IT Support Engineer; Help Desk Analyst; Desktop Support Engineer; Technical Support Specialist; MSP Technician.
+
+Core Fit
+Jesse Copas has hands-on support experience across healthcare, MSP, field service, retail repair, and internal technical engineering environments. He has supported large user populations, handled high-volume help desk work, performed remote and on-site troubleshooting, repaired hardware, and built tools that reduce repetitive support tasks.
+
+Best Evidence
+- Supported 45,000 employees, 20,000 devices, and 400+ applications at University of Rochester Medical Center.
+- Worked in a 15-person help desk team handling 500-1000 daily calls.
+- Supported Active Directory, Citrix Workspace, ServiceNow, Epic access issues, account permissions, malware cleanup, and password resets.
+- Supported roughly 150 MSP clients at Simple Tech Innovations.
+- Delivered remote help desk support, on-site troubleshooting, equipment repair, and new hardware deployments.
+- Repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware as a field technician.
+
+Relevant Keywords
+IT support, help desk, desktop support, user support, remote support, on-site support, Active Directory, ServiceNow, Citrix Workspace, Epic support, account permissions, password resets, malware cleanup, MSP support, hardware repair, printer repair, server repair, endpoint deployment.
+
+Projects That Support This Fit
+- Active Directory User Export Tool: reduced large user-information requests from hours or days to seconds.
+- Automated Computer Setup Script: reduced new computer configuration by more than an hour per machine.
+
+Contact
+Email: Jessecopas@gmail.com
+GitHub: https://github.com/Jessomadic
+LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/

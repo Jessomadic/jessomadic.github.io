@@ -1,0 +1,62 @@
+# Jesse Copas
+
+Jesse Copas is a Rochester, NY based Technical Engineer focused on IT support, endpoint deployment, automation, Active Directory tooling, and practical systems improvement.
+
+## Contact
+
+- Email: Jessecopas@gmail.com
+- GitHub: https://github.com/Jessomadic
+- LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/
+- Location: Rochester, NY, Eastern Time
+
+## Recruiting Summary
+
+Jesse has hands-on IT support and engineering experience across MSP, enterprise, healthcare, field service, and repair environments. Key strengths include endpoint deployment, scripting and automation, Active Directory support, help desk operations, field hardware repair, systems troubleshooting, and practical support tooling.
+
+## Role Fit Signals
+
+- Strong fit for Technical Engineer, IT Support Engineer, Systems Support Specialist, Endpoint Deployment Technician, Help Desk Analyst, Field Service Technician, Desktop Support Engineer, MSP Technician, and Junior Systems Administrator roles.
+- Best evidence: deployment automation, Active Directory tooling, high-volume healthcare help desk support, MSP client support, enterprise field hardware repair, and internal support tooling.
+- Work style: hands-on troubleshooter who builds small practical tools to remove repetitive support work and improve deployment consistency.
+
+## Evidence Map
+
+- Endpoint deployment: Automated Computer Setup Script reduced new computer configuration by more than an hour per machine.
+- Active Directory support: AD export utility reduced large user-information requests from hours or days to seconds.
+- Scale: University of Rochester Medical Center support environment included 45,000 employees, 20,000 devices, and 400+ applications.
+- Help desk volume: Worked in a 15-person team handling 500-1000 daily calls.
+- Field repair: Handled HP enterprise field service tickets across laptops, desktops, printers, servers, and storage hardware.
+
+## Keyword Map
+
+IT support, technical engineer, endpoint deployment, Windows deployment, Active Directory, Group Policy, help desk, ServiceNow, Citrix Workspace, Epic support, MSP, field service, hardware repair, server repair, printer repair, scripting, automation, Batch, Python, Clojure, PDF generation, SonicWall, 3CX, HP enterprise service, CompTIA A+.
+
+## Current Focus
+
+- IT support and technical engineering
+- Endpoint deployment and imaging workflows
+- Active Directory tooling and account support
+- Windows deployment automation
+- Help desk and user support at scale
+- Field service and enterprise hardware repair
+
+## Experience Highlights
+
+- Microworx: Technical Engineer building internal tools for imaging, benchmarking, ticketing modernization, and repeatable endpoint deployment.
+- Hemmersbach US LLC: Hewlett-Packard Enterprise Field Technician handling field service tickets, enterprise hardware repair, printers, servers, and storage hardware.
+- Simple Tech Innovations: Network Engineer supporting roughly 150 MSP clients and building deployment automation that reduced setup time by 75%.
+- University of Rochester Medical Center: Help Desk IT Analyst supporting 45,000 employees, 20,000 devices, and 400+ applications in a high-volume healthcare environment.
+
+## Selected Projects
+
+- Automated Computer Setup Script: Windows deployment automation that reduced new computer configuration by more than an hour per machine.
+- Active Directory User Export Tool: AD support utility that reduced large user-information requests from hours or days to seconds.
+- DungeonMasterVault: Clojure PDF generation maintenance for a widely used free SRD 5e character creator.
+
+## Certifications
+
+- CompTIA A+
+- SonicWall Network Security Administrator (SNSA)
+- 3CX Basic Certified Engineer
+- HP Enterprise Server Service Certification
+- HP A3/A4 Printer Repair Certifications

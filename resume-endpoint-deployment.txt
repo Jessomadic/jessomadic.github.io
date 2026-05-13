@@ -1,0 +1,27 @@
+Jesse Copas - Endpoint Deployment Role-Fit Summary
+
+Target Roles
+Endpoint Deployment Technician; Desktop Support Engineer; IT Support Engineer; Systems Support Specialist; Windows Deployment Technician.
+
+Core Fit
+Jesse Copas builds practical tooling for repeatable endpoint deployment, imaging, setup automation, and hardware rollout work. His experience combines hands-on device support with automation that improves deployment consistency and reduces manual configuration time.
+
+Best Evidence
+- Built a deployment automation script that reduced new-computer setup time by 75% and improved consistency.
+- Built a customizable setup script that reduced new computer configuration by more than an hour per machine in environments without PXE tooling.
+- Develops in-house tools for imaging, benchmarking, ticketing modernization, and repeatable endpoint deployment at Microworx.
+- Built an imaging workflow using VSS live imaging and delta merging to reduce recurring software costs and deployment time.
+- Installed and supported computers, printers, access points, network drops, and related infrastructure for MSP clients.
+- Supported 20,000 devices in a healthcare IT environment.
+
+Relevant Keywords
+endpoint deployment, Windows deployment, new computer setup, imaging, VSS live imaging, delta merging, deployment automation, Batch scripting, Python, hardware deployment, desktop support, laptop support, PXE alternatives, software configuration, support tooling.
+
+Projects That Support This Fit
+- Automated Computer Setup Script: Windows deployment automation for consistent setup without PXE tooling.
+- Active Directory User Export Tool: support utility for faster user/account information retrieval.
+
+Contact
+Email: Jessecopas@gmail.com
+GitHub: https://github.com/Jessomadic
+LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/

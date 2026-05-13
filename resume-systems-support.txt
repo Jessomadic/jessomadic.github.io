@@ -1,0 +1,28 @@
+Jesse Copas - Systems Support Role-Fit Summary
+
+Target Roles
+Systems Support Specialist; Junior Systems Administrator; Technical Engineer; IT Support Engineer; MSP Technician.
+
+Core Fit
+Jesse Copas is strongest where user support, systems troubleshooting, internal tooling, endpoint work, and business technical support overlap. He has worked across healthcare IT, MSP support, field service, and technical engineering roles with a pattern of building small tools that improve operational reliability.
+
+Best Evidence
+- Refactored legacy Perl/PHP ticketing and SQL workflows into a more maintainable Python-based environment.
+- Develops internal support tools for imaging, benchmarking, ticketing modernization, and endpoint deployment.
+- Partnered with business clients on technical support, system design, hardware specification, and project execution.
+- Supported Active Directory, Citrix Workspace, ServiceNow, Epic access issues, account permissions, malware cleanup, and password resets.
+- Supported enterprise hardware including HP laptops, desktops, A3/A4 printers, servers, and storage hardware.
+- Supported roughly 150 MSP clients as part of a three-person technical team.
+
+Relevant Keywords
+systems support, technical engineer, junior systems administrator, IT support engineer, MSP technician, Active Directory, Group Policy, ServiceNow, Citrix Workspace, Python, SQL workflows, ticketing modernization, endpoint deployment, hardware support, server support, printer support, user support, support automation.
+
+Projects That Support This Fit
+- Active Directory User Export Tool: reduced large user-information requests from hours or days to seconds.
+- Automated Computer Setup Script: reduced new computer setup time and improved deployment consistency.
+- DungeonMasterVault: maintained Clojure-based PDF generation for a widely used open-source application.
+
+Contact
+Email: Jessecopas@gmail.com
+GitHub: https://github.com/Jessomadic
+LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/

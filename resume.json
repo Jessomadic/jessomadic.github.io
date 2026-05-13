@@ -1,0 +1,137 @@
+{
+  "basics": {
+    "name": "Jesse Copas",
+    "label": "Technical Engineer | IT Support | Endpoint Deployment | Automation",
+    "email": "Jessecopas@gmail.com",
+    "url": "https://jessecopas.com/",
+    "location": {
+      "city": "Rochester",
+      "region": "NY",
+      "countryCode": "US"
+    },
+    "profiles": [
+      {
+        "network": "GitHub",
+        "username": "Jessomadic",
+        "url": "https://github.com/Jessomadic"
+      },
+      {
+        "network": "LinkedIn",
+        "username": "jesse-copas-50339b174",
+        "url": "https://www.linkedin.com/in/jesse-copas-50339b174/"
+      }
+    ],
+    "summary": "Technical Engineer focused on IT support, endpoint deployment, automation, Active Directory tooling, and practical systems improvement."
+  },
+  "targetRoles": [
+    "Technical Engineer",
+    "IT Support Engineer",
+    "Systems Support Specialist",
+    "Endpoint Deployment Technician",
+    "Help Desk Analyst",
+    "Field Service Technician",
+    "Desktop Support Engineer",
+    "MSP Technician",
+    "Junior Systems Administrator"
+  ],
+  "skills": [
+    {
+      "name": "IT Support",
+      "keywords": ["help desk", "desktop support", "user support", "remote support", "on-site support"]
+    },
+    {
+      "name": "Endpoint Deployment",
+      "keywords": ["Windows deployment", "new computer setup", "imaging", "VSS live imaging", "deployment automation"]
+    },
+    {
+      "name": "Directory and Enterprise Tools",
+      "keywords": ["Active Directory", "Group Policy", "Citrix Workspace", "ServiceNow", "Epic support"]
+    },
+    {
+      "name": "Automation and Scripting",
+      "keywords": ["Batch", "Python", "PowerShell", "Clojure", "support tooling"]
+    },
+    {
+      "name": "Hardware and Field Service",
+      "keywords": ["HP laptops", "HP desktops", "A3/A4 printers", "servers", "storage hardware", "component replacement"]
+    }
+  ],
+  "work": [
+    {
+      "name": "Microworx",
+      "position": "Technical Engineer",
+      "startDate": "2024-04",
+      "summary": "Develops in-house support tools, imaging workflows, benchmarking tools, and ticketing modernization work.",
+      "highlights": [
+        "Develop in-house tools for imaging, benchmarking, ticketing modernization, and repeatable endpoint deployment.",
+        "Built an imaging workflow using VSS live imaging and delta merging to reduce recurring software costs and deployment time.",
+        "Refactored legacy Perl/PHP ticketing and SQL workflows into a more maintainable Python-based environment.",
+        "Partner with business clients on technical support, system design, hardware specification, and project execution."
+      ]
+    },
+    {
+      "name": "Hemmersbach US LLC",
+      "position": "Hewlett-Packard Enterprise Field Technician",
+      "startDate": "2023-05",
+      "endDate": "2023-11",
+      "summary": "Enterprise field service across HP laptops, desktops, printers, servers, and storage hardware.",
+      "highlights": [
+        "Handled 2-5 daily field service tickets across routes up to 400 miles for enterprise hardware repair.",
+        "Repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware in client environments.",
+        "Performed component replacement, diagnostics, hardware installation, and server network integration."
+      ]
+    },
+    {
+      "name": "Simple Tech Innovations",
+      "position": "Network Engineer",
+      "startDate": "2022-11",
+      "endDate": "2023-05",
+      "summary": "MSP support, deployment, repair, and client troubleshooting.",
+      "highlights": [
+        "Built a deployment automation script that reduced new-computer setup time by 75% and improved consistency.",
+        "Supported roughly 150 MSP clients as part of a three-person technical team.",
+        "Delivered remote help desk support, on-site troubleshooting, equipment repair, and new hardware deployments."
+      ]
+    },
+    {
+      "name": "University of Rochester Medical Center",
+      "position": "Help Desk - IT Analyst",
+      "startDate": "2022-03",
+      "endDate": "2022-10",
+      "summary": "High-volume healthcare IT support across users, devices, and enterprise applications.",
+      "highlights": [
+        "Supported 45,000 employees, 20,000 devices, and 400+ applications across University of Rochester medical environments.",
+        "Worked in a 15-person help desk team handling 500-1000 daily calls.",
+        "Built an Active Directory export tool that reduced large user-information requests from hours or days to seconds.",
+        "Supported Active Directory, Citrix Workspace, ServiceNow, Epic access issues, account permissions, malware cleanup, and password resets."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Automated Computer Setup Script",
+      "description": "Customizable Windows deployment automation that reduced new computer configuration by more than an hour per machine.",
+      "url": "https://github.com/Jessomadic/NewComputerSetup/tree/Main",
+      "keywords": ["Batch", "Windows deployment", "endpoint deployment", "automation"]
+    },
+    {
+      "name": "Active Directory User Export Tool",
+      "description": "Active Directory export utility that reduced large user-information requests from hours or days to seconds.",
+      "url": "https://github.com/Jessomadic/AD-Export-Tool",
+      "keywords": ["Active Directory", "Group Policy", "help desk", "automation"]
+    },
+    {
+      "name": "DungeonMasterVault",
+      "description": "Clojure-based PDF generation maintenance for a widely used free SRD 5e character creator.",
+      "url": "https://github.com/Orcpub/orcpub",
+      "keywords": ["Clojure", "PDF generation", "open source"]
+    }
+  ],
+  "certificates": [
+    { "name": "CompTIA A+ Certification", "issuer": "CompTIA" },
+    { "name": "SonicWall Network Security Administrator (SNSA)", "issuer": "SonicWall" },
+    { "name": "3CX Basic Certified Engineer", "issuer": "3CX" },
+    { "name": "HP Enterprise Server Service Certification", "issuer": "HP" },
+    { "name": "HP A3/A4 Printer Repair Certifications", "issuer": "HP" }
+  ]
+}

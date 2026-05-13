@@ -1,0 +1,63 @@
+Jesse Copas
+Technical Engineer | IT Support | Endpoint Deployment | Automation
+Rochester, NY | Eastern Time
+Email: Jessecopas@gmail.com
+GitHub: https://github.com/Jessomadic
+LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/
+
+Summary
+Technical Engineer focused on IT support, endpoint deployment, automation, Active Directory tooling, and practical systems improvement. Hands-on experience across MSP, enterprise, healthcare, field service, and repair environments.
+
+Target Roles
+Technical Engineer; IT Support Engineer; Systems Support Specialist; Endpoint Deployment Technician; Help Desk Analyst; Field Service Technician; Desktop Support Engineer; MSP Technician; Junior Systems Administrator.
+
+Core Strengths
+IT support; endpoint deployment; Windows deployment; imaging workflows; Active Directory; Group Policy; help desk operations; ServiceNow; Citrix Workspace; Epic support; MSP client support; field service; enterprise hardware repair; server repair; printer repair; scripting; automation; Batch; Python; Clojure; SonicWall; 3CX; HP enterprise hardware; CompTIA A+.
+
+Experience
+Microworx, Technical Engineer, April 2024 - Present
+- Develop in-house tools for imaging, benchmarking, ticketing modernization, and repeatable endpoint deployment.
+- Built an imaging workflow using VSS live imaging and delta merging to reduce recurring software costs and deployment time.
+- Refactored legacy Perl/PHP ticketing and SQL workflows into a more maintainable Python-based environment.
+- Partner with business clients on technical support, system design, hardware specification, and project execution.
+
+Hemmersbach US LLC, Hewlett-Packard Enterprise Field Technician, May 2023 - Nov 2023
+- Handled 2-5 daily field service tickets across routes up to 400 miles for enterprise hardware repair.
+- Repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware in client environments.
+- Performed component replacement, diagnostics, hardware installation, and server network integration.
+
+Simple Tech Innovations, Network Engineer, Nov 2022 - May 2023
+- Built a deployment automation script that reduced new-computer setup time by 75% and improved consistency.
+- Supported roughly 150 MSP clients as part of a three-person technical team.
+- Delivered remote help desk support, on-site troubleshooting, equipment repair, and new hardware deployments.
+
+University of Rochester Medical Center, Help Desk - IT Analyst, March 2022 - Oct 2022
+- Supported 45,000 employees, 20,000 devices, and 400+ applications across University of Rochester medical environments.
+- Worked in a 15-person help desk team handling 500-1000 daily calls.
+- Built an Active Directory export tool that reduced large user-information requests from hours or days to seconds.
+- Supported Active Directory, Citrix Workspace, ServiceNow, Epic access issues, account permissions, malware cleanup, and password resets.
+
+Dave and Buster's, Game Repair and IT Support, March 2021 - March 2022
+- Repaired arcade hardware, including component-level troubleshooting and full cabinet rebuilds.
+- Maintained software for game systems and internal workstations.
+- Provided staff IT support for printers, passwords, and workstation issues.
+
+The Home Depot, Electrical Associate, Nov 2018 - April 2020
+- Managed department operations independently in a fast-paced retail environment.
+- Advised customers and contractors on electrical products, smart home devices, setup, and troubleshooting.
+
+Selected Projects
+Automated Computer Setup Script
+- Windows deployment automation that reduced new computer configuration by more than an hour per machine.
+- Repository: https://github.com/Jessomadic/NewComputerSetup/tree/Main
+
+Active Directory User Export Tool
+- AD support utility that reduced large user-information requests from hours or days to seconds.
+- Repository: https://github.com/Jessomadic/AD-Export-Tool
+
+DungeonMasterVault
+- Maintained Clojure-based PDF generation for character sheets on a widely used free SRD 5e character creator.
+- Repository: https://github.com/Orcpub/orcpub
+
+Certifications
+CompTIA A+ Certification; SonicWall Network Security Administrator (SNSA); 3CX Basic Certified Engineer; HP Enterprise Server Service Certification; HP A3/A4 Printer Repair Certifications.
