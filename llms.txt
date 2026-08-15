@@ -1,65 +1,121 @@
 # Jesse Copas
 
-Jesse Copas is a Rochester, NY based Technical Engineer focused on IT support, endpoint deployment, automation, Active Directory tooling, and practical systems improvement.
+> Rochester-based systems administrator with hands-on MSP, healthcare, Windows infrastructure, endpoint deployment, networking, and automation experience.
+
+Canonical website: https://jessecopas.com/
+HTML resume: https://jessecopas.com/resume/
+PDF resume: https://jessecopas.com/resume/Jesse-Copas-Systems-Administrator-Resume.pdf
+JSON resume: https://jessecopas.com/resume.json
+Plain-text resume: https://jessecopas.com/resume.txt
+
+## Professional focus
+
+Systems Administrator | Windows Infrastructure & Automation based in Rochester, NY. Seeking a permanent Level II or III Systems Administrator role; open to local, hybrid, or remote work..
+
+## Core capabilities
+
+Windows Infrastructure: Windows Server, Active Directory, Group Policy, Endpoint imaging, Workstation deployment, Server and storage hardware
+Identity & Productivity: Microsoft 365, Identity administration, Google Workspace, 3CX
+Networking & Support: SonicWall, Wireless access points, Network drops, Server network integration, Hardware diagnostics, Remote and on-site support
+Automation & Tooling: PowerShell, Batch, Python, JavaScript, Microsoft SQL Server, Git, GitHub Actions, Docker
+
+## Evidence
+
+- Reduced manual workstation setup time by 75% through Batch deployment automation.
+- Supported roughly 150 MSP clients as part of a three-person technical team.
+- Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.
+- Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.
+
+## Selected case studies
+
+Custom Ticketing & POS Operations System
+Problem: The legacy Perl and PHP process did not give tickets, labor, pricing, parts, and computer-build details one maintainable operational record.
+Environment: Internal business operations, existing POS workflow, Microsoft SQL Server
+Actions: Designed and built a custom Python and JavaScript application from the ground up without adapting a commercial or open-source ticketing base.
+Result: Created one maintainable system built around the business's actual workflow.
+Technologies: Python, JavaScript, Microsoft SQL Server, POS Integration
+
+VSS Live-Imaging Workflow
+Problem: The existing imaging process carried recurring software costs and slowed endpoint deployment.
+Environment: Windows endpoint deployment, live systems, Volume Shadow Copy Service
+Actions: Developed an in-house live-imaging and delta-merging workflow around VSS.
+Result: Reduced recurring software costs and shortened endpoint deployment.
+Technologies: VSS, Windows Deployment, Endpoint Imaging
+
+NewComputerSetup
+Problem: New-computer setup required repetitive manual configuration in client environments where PXE was not always available.
+Environment: Windows workstations, MSP client standards, non-PXE deployment environments
+Actions: Built a customizable Batch workflow that applied the required software, settings, naming, upgrade, and handoff steps consistently.
+Result: Made workstation deployment faster and more consistent across MSP clients.
+Evidence: Reduced manual workstation setup time by 75% through Batch deployment automation.
+Technologies: Batch, Windows Deployment, Endpoint Administration
+Repository: https://github.com/Jessomadic/NewComputerSetup/tree/Main
+
+Active Directory Reporting Tool
+Problem: Large Active Directory group-information requests required repetitive manual lookup and formatting.
+Environment: Enterprise Active Directory, PowerShell, Windows Forms, healthcare help desk operations
+Actions: Built a simple interface that recursively queried Active Directory group membership and exported name, email, and SAM account name to CSV.
+Result: Made large Active Directory exports repeatable and fast.
+Evidence: Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.
+Technologies: PowerShell, Active Directory, Windows Forms, CSV
+Repository: https://github.com/Jessomadic/AD-Export-Tool
+
+## Experience
+
+Technical Engineer | Microworx | April 2024 - Present
+- Designed and built a custom ticketing and POS operations system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing point-of-sale workflow—without adapting a packaged ticketing platform.
+- Developed a VSS live-imaging and delta-merging workflow that reduced recurring software costs and shortened endpoint deployment.
+- Built a laptop battery-life benchmarking tool that automated video, audio, and office test cycles, tracked usage, generated reports, and shut systems down safely.
+- Work directly with business clients on troubleshooting, technical projects, and specifications for servers, desktops, and laptops.
+Environment: Windows endpoint deployment, VSS live imaging, Python, JavaScript, Microsoft SQL Server, Perl, PHP, Servers, Desktops, Laptops
+
+Hewlett-Packard Enterprise Field Technician | HEMMERSBACH US LLC | May 2023 - Nov 2023
+- Handled 2–5 field-service tickets per day across routes of up to 400 miles.
+- Worked independently across long field-service routes in varied customer environments.
+- Diagnosed and repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware.
+- Replaced components, installed server hardware, and integrated new servers into client networks.
+Environment: HP enterprise servers, Storage, A3/A4 printers, Laptops, Desktops, Hardware diagnostics, Network integration
+
+Network Engineer | Simple Tech Innovations | Nov 2022 - May 2023
+- Reduced manual workstation setup time by 75% through Batch deployment automation.
+- Supported roughly 150 MSP clients as part of a three-person technical team.
+- Built Batch-based workstation deployment automation that made manual setup faster and configuration more consistent across clients.
+- Moved between remote help desk work, on-site troubleshooting, equipment repair, and new hardware deployments for an MSP client base.
+- Deployed and repaired computers, printers, wireless access points, and network drops.
+Environment: Windows deployment, MSP support, Batch automation, Workstations, Printers, Wireless access points, Network drops
+
+Help Desk - IT Analyst | University of Rochester Medical Center | March 2022 - Oct 2022
+- Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.
+- Worked on a 15-person help desk team handling 500–1,000 calls per day.
+- Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.
+- Supported staff across University of Rochester hospitals and medical centers in a large enterprise healthcare environment.
+- Resolved Active Directory permission, Citrix Workspace, ServiceNow, Epic access, malware, password, and Windows endpoint issues.
+- Built a PowerShell Active Directory export tool that made large group-information requests repeatable and fast.
+Environment: Active Directory, PowerShell, Citrix Workspace, ServiceNow, Epic, Windows endpoints, Account permissions, Enterprise healthcare IT
+
+Game Repair and IT Support | Dave and Buster's, Inc | March 2021 - March 2022
+- Repaired game hardware and supported staff with workstation, printer, password, and software issues.
+Environment: Game hardware, Windows workstations, Printers, Staff IT support
+
+Electrical Associate | The Home Depot | Nov 2018 - April 2020
+- Ran the electrical department independently and helped customers and contractors select, set up, and troubleshoot electrical and smart-home products.
+
+## Credentials
+
+Certifications:
+- CompTIA A+ - CompTIA
+- SonicWall Network Security Administrator (SNSA) - SonicWall
+- 3CX Basic Certified Engineer - 3CX
+- HP Enterprise Server Service Certification - HP
+- HP A3/A4 Printer Repair Certifications - HP
+
+Training:
+- SC-300T00-A: Microsoft Identity and Access Administrator - Microsoft
 
 ## Contact
 
-- Email: Jessecopas@gmail.com
-- GitHub: https://github.com/Jessomadic
-- LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/
-- Location: Rochester, NY, Eastern Time
+Email: Jessecopas@gmail.com
+LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/
+GitHub: https://github.com/Jessomadic
 
-## Recruiting Summary
-
-Jesse has hands-on IT support and engineering experience across MSP, enterprise, healthcare, field service, and repair environments. Key strengths include endpoint deployment, scripting and automation, Active Directory support, help desk operations, field hardware repair, systems troubleshooting, and practical support tooling.
-
-## Role Fit Signals
-
-- Strong fit for Technical Engineer, IT Support Engineer, Systems Support Specialist, Endpoint Deployment Technician, Help Desk Analyst, Field Service Technician, Desktop Support Engineer, MSP Technician, and Junior Systems Administrator roles.
-- Best evidence: deployment automation, Active Directory tooling, high-volume healthcare help desk support, MSP client support, enterprise field hardware repair, and internal support tooling.
-- Work style: hands-on troubleshooter who builds small practical tools to remove repetitive support work and improve deployment consistency.
-
-## Evidence Map
-
-- Endpoint deployment: Automated Computer Setup Script reduced new computer configuration by more than an hour per machine.
-- Active Directory support: AD export utility reduced large user-information requests from hours or days to seconds.
-- Scale: University of Rochester Medical Center support environment included 45,000 employees, 20,000 devices, and 400+ applications.
-- Help desk volume: Worked in a 15-person team handling 500-1000 daily calls.
-- Field repair: Handled HP enterprise field service tickets across laptops, desktops, printers, servers, and storage hardware.
-- Internal operations tooling: Built an internal ticketing platform using Python, JavaScript, and MSSQL to track work, time, pricing, parts, and computer builds while integrating with the company POS system.
-
-## Keyword Map
-
-IT support, technical engineer, endpoint deployment, Windows deployment, Active Directory, Microsoft Entra, SC-300T00-A, identity administration, Group Policy, help desk, ServiceNow, Citrix Workspace, Epic support, MSP, field service, hardware repair, server repair, printer repair, scripting, automation, Batch, Python, Clojure, PDF generation, SonicWall, 3CX, HP enterprise service, CompTIA A+.
-
-## Current Focus
-
-- IT support and technical engineering
-- Endpoint deployment and imaging workflows
-- Active Directory tooling and account support
-- Windows deployment automation
-- Help desk and user support at scale
-- Field service and enterprise hardware repair
-
-## Experience Highlights
-
-- Microworx: Technical Engineer building internal tools for imaging, benchmarking, ticketing modernization, and repeatable endpoint deployment.
-- Hemmersbach US LLC: Hewlett-Packard Enterprise Field Technician handling field service tickets, enterprise hardware repair, printers, servers, and storage hardware.
-- Simple Tech Innovations: Network Engineer supporting roughly 150 MSP clients and building deployment automation that reduced setup time by 75%.
-- University of Rochester Medical Center: Help Desk IT Analyst supporting 45,000 employees, 20,000 devices, and 400+ applications in a high-volume healthcare environment.
-
-## Selected Projects
-
-- Internal Ticketing & POS Operations System: Internal-only Python, JavaScript, and MSSQL platform for tickets, time, pricing, parts, computer builds, and POS integration.
-- Automated Computer Setup Script: Windows deployment automation that reduced new computer configuration by more than an hour per machine.
-- Active Directory User Export Tool: AD support utility that reduced large user-information requests from hours or days to seconds.
-- DungeonMasterVault: Clojure PDF generation maintenance for a widely used free SRD 5e character creator.
-
-## Certifications
-
-- CompTIA A+
-- SonicWall Network Security Administrator (SNSA)
-- 3CX Basic Certified Engineer
-- Microsoft Entra SC-300T00-A Certified
-- HP Enterprise Server Service Certification
-- HP A3/A4 Printer Repair Certifications
+Last updated: August 15, 2026

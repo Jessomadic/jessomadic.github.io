@@ -1,21 +1,16 @@
-JESSE COPAS
-Systems Administrator | Windows Infrastructure & Automation
-Rochester, NY | Jessecopas@gmail.com
-Website: https://jessecopas.com
-LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/
-GitHub: https://github.com/Jessomadic
-PDF: https://jessecopas.com/resume/Jesse-Copas-Systems-Administrator-Resume.pdf
+JESSE COPAS - SYSTEMS ADMINISTRATOR | INFRASTRUCTURE & AUTOMATION
+Rochester, NY | Jessecopas@gmail.com | https://jessecopas.com
 
-PROFESSIONAL SUMMARY
+PROFILE
 Systems administrator with hands-on experience across MSP support, enterprise healthcare IT, endpoint deployment, Windows Server, Active Directory, server and storage hardware, networking, and automation. I build practical tools with PowerShell, Python, Batch, JavaScript, and SQL to remove repetitive work and make systems easier to support.
 
-CORE CAPABILITIES
+TECHNICAL FOCUS
 Windows Infrastructure: Windows Server, Active Directory, Group Policy, Endpoint imaging, Workstation deployment, Server and storage hardware
 Identity & Productivity: Microsoft 365, Identity administration, Google Workspace, 3CX
 Networking & Support: SonicWall, Wireless access points, Network drops, Server network integration, Hardware diagnostics, Remote and on-site support
 Automation & Tooling: PowerShell, Batch, Python, JavaScript, Microsoft SQL Server, Git, GitHub Actions, Docker
 
-TECHNICAL EXPERIENCE
+DELIVERY EXPERIENCE
 Technical Engineer | Microworx | April 2024 - Present
 - Designed and built a custom ticketing and POS operations system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing point-of-sale workflow—without adapting a packaged ticketing platform.
 - Developed a VSS live-imaging and delta-merging workflow that reduced recurring software costs and shortened endpoint deployment.
@@ -47,14 +42,13 @@ Help Desk - IT Analyst | University of Rochester Medical Center | March 2022 - O
 - Built a PowerShell Active Directory export tool that made large group-information requests repeatable and fast.
 Environment: Active Directory, PowerShell, Citrix Workspace, ServiceNow, Epic, Windows endpoints, Account permissions, Enterprise healthcare IT
 
-Game Repair and IT Support | Dave and Buster's, Inc | March 2021 - March 2022
-- Repaired game hardware and supported staff with workstation, printer, password, and software issues.
-Environment: Game hardware, Windows workstations, Printers, Staff IT support
+SELECTED OUTCOMES
+- Reduced manual workstation setup time by 75% through Batch deployment automation.
+- Supported roughly 150 MSP clients as part of a three-person technical team.
+- Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.
+- Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.
 
-Electrical Associate | The Home Depot | Nov 2018 - April 2020
-- Ran the electrical department independently and helped customers and contractors select, set up, and troubleshoot electrical and smart-home products.
-
-SELECTED INFRASTRUCTURE PROJECTS
+CASE STUDIES
 Custom Ticketing & POS Operations System
 Problem: The legacy Perl and PHP process did not give tickets, labor, pricing, parts, and computer-build details one maintainable operational record.
 Environment: Internal business operations, existing POS workflow, Microsoft SQL Server
@@ -87,14 +81,10 @@ Evidence: Reduced requests covering hundreds or thousands of Active Directory us
 Technologies: PowerShell, Active Directory, Windows Forms, CSV
 Repository: https://github.com/Jessomadic/AD-Export-Tool
 
-CERTIFICATIONS
+CREDENTIALS
 - CompTIA A+ - CompTIA
 - SonicWall Network Security Administrator (SNSA) - SonicWall
 - 3CX Basic Certified Engineer - 3CX
 - HP Enterprise Server Service Certification - HP
 - HP A3/A4 Printer Repair Certifications - HP
-
-TRAINING
 - SC-300T00-A: Microsoft Identity and Access Administrator - Microsoft
-
-Updated August 15, 2026

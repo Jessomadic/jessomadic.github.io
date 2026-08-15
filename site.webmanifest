@@ -1,0 +1,16 @@
+{
+  "name": "Jesse Copas - Systems Administrator",
+  "short_name": "Jesse Copas",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0284c7",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

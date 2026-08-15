@@ -1,12 +1,14 @@
 {
+  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/schema.json",
   "basics": {
     "name": "Jesse Copas",
-    "label": "Technical Engineer | IT Support | Endpoint Deployment | Automation",
+    "label": "Systems Administrator | Windows Infrastructure & Automation",
     "email": "Jessecopas@gmail.com",
-    "url": "https://jessecopas.com/",
+    "url": "https://jessecopas.com",
+    "summary": "Systems administrator with hands-on experience across MSP support, enterprise healthcare IT, endpoint deployment, Windows Server, Active Directory, server and storage hardware, networking, and automation. I build practical tools with PowerShell, Python, Batch, JavaScript, and SQL to remove repetitive work and make systems easier to support.",
     "location": {
       "city": "Rochester",
-      "region": "NY",
+      "region": "New York",
       "countryCode": "US"
     },
     "profiles": [
@@ -20,125 +22,450 @@
         "username": "jesse-copas-50339b174",
         "url": "https://www.linkedin.com/in/jesse-copas-50339b174/"
       }
-    ],
-    "summary": "Technical Engineer focused on IT support, endpoint deployment, automation, Active Directory tooling, and practical systems improvement."
+    ]
   },
-  "targetRoles": [
-    "Technical Engineer",
-    "IT Support Engineer",
-    "Systems Support Specialist",
-    "Endpoint Deployment Technician",
-    "Help Desk Analyst",
-    "Field Service Technician",
-    "Desktop Support Engineer",
-    "MSP Technician",
-    "Junior Systems Administrator"
-  ],
-  "skills": [
-    {
-      "name": "IT Support",
-      "keywords": ["help desk", "desktop support", "user support", "remote support", "on-site support"]
-    },
-    {
-      "name": "Endpoint Deployment",
-      "keywords": ["Windows deployment", "new computer setup", "imaging", "VSS live imaging", "deployment automation"]
-    },
-    {
-      "name": "Directory and Enterprise Tools",
-      "keywords": ["Active Directory", "Microsoft Entra", "SC-300T00-A", "identity administration", "Group Policy", "Citrix Workspace", "ServiceNow", "Epic support"]
-    },
-    {
-      "name": "Automation and Scripting",
-      "keywords": ["Batch", "Python", "PowerShell", "Clojure", "support tooling"]
-    },
-    {
-      "name": "Hardware and Field Service",
-      "keywords": ["HP laptops", "HP desktops", "A3/A4 printers", "servers", "storage hardware", "component replacement"]
-    }
-  ],
   "work": [
     {
       "name": "Microworx",
       "position": "Technical Engineer",
-      "startDate": "2024-04",
-      "summary": "Develops in-house support tools, imaging workflows, benchmarking tools, and ticketing modernization work.",
+      "dateRange": "April 2024 - Present",
+      "summary": "Designed and built a custom ticketing and POS operations system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing point-of-sale workflow—without adapting a packaged ticketing platform.",
       "highlights": [
-        "Develop in-house tools for imaging, benchmarking, ticketing modernization, and repeatable endpoint deployment.",
-        "Built an imaging workflow using VSS live imaging and delta merging to reduce recurring software costs and deployment time.",
-        "Refactored legacy Perl/PHP ticketing and SQL workflows into a more maintainable Python-based environment.",
-        "Partner with business clients on technical support, system design, hardware specification, and project execution."
+        "Designed and built a custom ticketing and POS operations system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing point-of-sale workflow—without adapting a packaged ticketing platform.",
+        "Developed a VSS live-imaging and delta-merging workflow that reduced recurring software costs and shortened endpoint deployment.",
+        "Built a laptop battery-life benchmarking tool that automated video, audio, and office test cycles, tracked usage, generated reports, and shut systems down safely.",
+        "Work directly with business clients on troubleshooting, technical projects, and specifications for servers, desktops, and laptops."
+      ],
+      "environment": [
+        "Windows endpoint deployment",
+        "VSS live imaging",
+        "Python",
+        "JavaScript",
+        "Microsoft SQL Server",
+        "Perl",
+        "PHP",
+        "Servers",
+        "Desktops",
+        "Laptops"
       ]
     },
     {
-      "name": "Hemmersbach US LLC",
+      "name": "HEMMERSBACH US LLC",
       "position": "Hewlett-Packard Enterprise Field Technician",
-      "startDate": "2023-05",
-      "endDate": "2023-11",
-      "summary": "Enterprise field service across HP laptops, desktops, printers, servers, and storage hardware.",
+      "dateRange": "May 2023 - Nov 2023",
+      "summary": "Worked independently across long field-service routes in varied customer environments.",
       "highlights": [
-        "Handled 2-5 daily field service tickets across routes up to 400 miles for enterprise hardware repair.",
-        "Repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware in client environments.",
-        "Performed component replacement, diagnostics, hardware installation, and server network integration."
+        "Handled 2–5 field-service tickets per day across routes of up to 400 miles.",
+        "Worked independently across long field-service routes in varied customer environments.",
+        "Diagnosed and repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware.",
+        "Replaced components, installed server hardware, and integrated new servers into client networks."
+      ],
+      "environment": [
+        "HP enterprise servers",
+        "Storage",
+        "A3/A4 printers",
+        "Laptops",
+        "Desktops",
+        "Hardware diagnostics",
+        "Network integration"
+      ],
+      "metrics": [
+        {
+          "key": "field_workload",
+          "value": "2–5 / 400 mi",
+          "label": "daily tickets / longest routes",
+          "statement": "Handled 2–5 field-service tickets per day across routes of up to 400 miles.",
+          "context": "HEMMERSBACH US LLC",
+          "featured": false
+        }
       ]
     },
     {
       "name": "Simple Tech Innovations",
       "position": "Network Engineer",
-      "startDate": "2022-11",
-      "endDate": "2023-05",
-      "summary": "MSP support, deployment, repair, and client troubleshooting.",
+      "dateRange": "Nov 2022 - May 2023",
+      "summary": "Built Batch-based workstation deployment automation that made manual setup faster and configuration more consistent across clients.",
       "highlights": [
-        "Built a deployment automation script that reduced new-computer setup time by 75% and improved consistency.",
+        "Reduced manual workstation setup time by 75% through Batch deployment automation.",
         "Supported roughly 150 MSP clients as part of a three-person technical team.",
-        "Delivered remote help desk support, on-site troubleshooting, equipment repair, and new hardware deployments."
+        "Built Batch-based workstation deployment automation that made manual setup faster and configuration more consistent across clients.",
+        "Moved between remote help desk work, on-site troubleshooting, equipment repair, and new hardware deployments for an MSP client base.",
+        "Deployed and repaired computers, printers, wireless access points, and network drops."
+      ],
+      "environment": [
+        "Windows deployment",
+        "MSP support",
+        "Batch automation",
+        "Workstations",
+        "Printers",
+        "Wireless access points",
+        "Network drops"
+      ],
+      "metrics": [
+        {
+          "key": "endpoint_setup",
+          "value": "75%",
+          "label": "less manual setup time",
+          "statement": "Reduced manual workstation setup time by 75% through Batch deployment automation.",
+          "context": "Simple Tech Innovations",
+          "featured": true
+        },
+        {
+          "key": "msp_clients",
+          "value": "~150",
+          "label": "MSP clients",
+          "statement": "Supported roughly 150 MSP clients as part of a three-person technical team.",
+          "context": "Simple Tech Innovations",
+          "featured": true
+        }
       ]
     },
     {
       "name": "University of Rochester Medical Center",
       "position": "Help Desk - IT Analyst",
-      "startDate": "2022-03",
-      "endDate": "2022-10",
-      "summary": "High-volume healthcare IT support across users, devices, and enterprise applications.",
+      "dateRange": "March 2022 - Oct 2022",
+      "summary": "Supported staff across University of Rochester hospitals and medical centers in a large enterprise healthcare environment.",
       "highlights": [
-        "Supported 45,000 employees, 20,000 devices, and 400+ applications across University of Rochester medical environments.",
-        "Worked in a 15-person help desk team handling 500-1000 daily calls.",
-        "Built an Active Directory export tool that reduced large user-information requests from hours or days to seconds.",
-        "Supported Active Directory, Citrix Workspace, ServiceNow, Epic access issues, account permissions, malware cleanup, and password resets."
+        "Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.",
+        "Worked on a 15-person help desk team handling 500–1,000 calls per day.",
+        "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
+        "Supported staff across University of Rochester hospitals and medical centers in a large enterprise healthcare environment.",
+        "Resolved Active Directory permission, Citrix Workspace, ServiceNow, Epic access, malware, password, and Windows endpoint issues.",
+        "Built a PowerShell Active Directory export tool that made large group-information requests repeatable and fast."
+      ],
+      "environment": [
+        "Active Directory",
+        "PowerShell",
+        "Citrix Workspace",
+        "ServiceNow",
+        "Epic",
+        "Windows endpoints",
+        "Account permissions",
+        "Enterprise healthcare IT"
+      ],
+      "metrics": [
+        {
+          "key": "healthcare_scale",
+          "value": "45K / 20K / 400+",
+          "label": "employees / devices / applications",
+          "statement": "Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.",
+          "context": "University of Rochester Medical Center",
+          "featured": true
+        },
+        {
+          "key": "help_desk_volume",
+          "value": "500–1,000",
+          "label": "daily calls handled by a 15-person team",
+          "statement": "Worked on a 15-person help desk team handling 500–1,000 calls per day.",
+          "context": "University of Rochester Medical Center",
+          "featured": false
+        },
+        {
+          "key": "ad_reporting",
+          "value": "Hours or days → seconds",
+          "label": "large Active Directory exports",
+          "statement": "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
+          "context": "University of Rochester Medical Center",
+          "featured": false
+        }
+      ]
+    },
+    {
+      "name": "Dave and Buster's, Inc",
+      "position": "Game Repair and IT Support",
+      "dateRange": "March 2021 - March 2022",
+      "summary": "Repaired game hardware and supported staff with workstation, printer, password, and software issues.",
+      "highlights": [
+        "Repaired game hardware and supported staff with workstation, printer, password, and software issues."
+      ],
+      "environment": [
+        "Game hardware",
+        "Windows workstations",
+        "Printers",
+        "Staff IT support"
+      ]
+    },
+    {
+      "name": "The Home Depot",
+      "position": "Electrical Associate",
+      "dateRange": "Nov 2018 - April 2020",
+      "summary": "Ran the electrical department independently and helped customers and contractors select, set up, and troubleshoot electrical and smart-home products.",
+      "highlights": [
+        "Ran the electrical department independently and helped customers and contractors select, set up, and troubleshoot electrical and smart-home products."
+      ]
+    }
+  ],
+  "certificates": [
+    {
+      "name": "CompTIA A+",
+      "issuer": "CompTIA",
+      "type": "Certification"
+    },
+    {
+      "name": "SonicWall Network Security Administrator (SNSA)",
+      "issuer": "SonicWall",
+      "type": "Certification"
+    },
+    {
+      "name": "3CX Basic Certified Engineer",
+      "issuer": "3CX",
+      "type": "Certification"
+    },
+    {
+      "name": "HP Enterprise Server Service Certification",
+      "issuer": "HP",
+      "type": "Certification"
+    },
+    {
+      "name": "HP A3/A4 Printer Repair Certifications",
+      "issuer": "HP",
+      "type": "Certification"
+    },
+    {
+      "name": "SC-300T00-A: Microsoft Identity and Access Administrator",
+      "issuer": "Microsoft",
+      "type": "Training"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Windows Infrastructure",
+      "keywords": [
+        "Windows Server",
+        "Active Directory",
+        "Group Policy",
+        "Endpoint imaging",
+        "Workstation deployment",
+        "Server and storage hardware"
+      ]
+    },
+    {
+      "name": "Identity & Productivity",
+      "keywords": [
+        "Microsoft 365",
+        "Identity administration",
+        "Google Workspace",
+        "3CX"
+      ]
+    },
+    {
+      "name": "Networking & Support",
+      "keywords": [
+        "SonicWall",
+        "Wireless access points",
+        "Network drops",
+        "Server network integration",
+        "Hardware diagnostics",
+        "Remote and on-site support"
+      ]
+    },
+    {
+      "name": "Automation & Tooling",
+      "keywords": [
+        "PowerShell",
+        "Batch",
+        "Python",
+        "JavaScript",
+        "Microsoft SQL Server",
+        "Git",
+        "GitHub Actions",
+        "Docker"
       ]
     }
   ],
   "projects": [
     {
-      "name": "Internal Ticketing & POS Operations System",
-      "description": "Internal ticketing platform built with Python, JavaScript, and MSSQL to track work, time, pricing, parts, and computer builds while integrating with the company POS system.",
-      "url": "",
-      "keywords": ["Python", "JavaScript", "MSSQL", "ticketing system", "POS integration", "internal tooling", "operations tracking"]
+      "name": "Custom Ticketing & POS Operations System",
+      "description": "The repair business needed one place for tickets, labor, pricing, parts, and custom-computer builds. I designed and built the system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing POS workflow. It does not sit on top of a packaged ticketing product; its workflow was built for the way the business actually operates.",
+      "highlights": [
+        "The legacy Perl and PHP process did not give tickets, labor, pricing, parts, and computer-build details one maintainable operational record.",
+        "Designed and built a custom Python and JavaScript application from the ground up without adapting a commercial or open-source ticketing base.",
+        "Created one maintainable system built around the business's actual workflow."
+      ],
+      "keywords": [
+        "Python",
+        "JavaScript",
+        "Microsoft SQL Server",
+        "POS Integration"
+      ],
+      "type": "Internal Project"
     },
     {
-      "name": "Automated Computer Setup Script",
-      "description": "Customizable Windows deployment automation that reduced new computer configuration by more than an hour per machine.",
+      "name": "VSS Live-Imaging Workflow",
+      "description": "Commercial imaging software added recurring cost and made deployments slower than they needed to be. I developed an in-house VSS live-imaging and delta-merging workflow to capture running systems and manage later changes more efficiently.",
+      "highlights": [
+        "The existing imaging process carried recurring software costs and slowed endpoint deployment.",
+        "Developed an in-house live-imaging and delta-merging workflow around VSS.",
+        "Reduced recurring software costs and shortened endpoint deployment."
+      ],
+      "keywords": [
+        "VSS",
+        "Windows Deployment",
+        "Endpoint Imaging"
+      ],
+      "type": "Internal Project"
+    },
+    {
+      "name": "NewComputerSetup",
+      "description": "At a small MSP, new PCs required the same manual work over and over, and PXE was not always available. I built a Batch workflow for software installation, Windows settings, browser defaults, computer naming, security-product cleanup, Windows 11 upgrade steps, and RMM handoff.",
+      "highlights": [
+        "New-computer setup required repetitive manual configuration in client environments where PXE was not always available.",
+        "Built a customizable Batch workflow that applied the required software, settings, naming, upgrade, and handoff steps consistently.",
+        "Made workstation deployment faster and more consistent across MSP clients.",
+        "Reduced manual workstation setup time by 75% through Batch deployment automation."
+      ],
+      "keywords": [
+        "Batch",
+        "Windows Deployment",
+        "Endpoint Administration"
+      ],
       "url": "https://github.com/Jessomadic/NewComputerSetup/tree/Main",
-      "keywords": ["Batch", "Windows deployment", "endpoint deployment", "automation"]
+      "type": "Infrastructure Case Study",
+      "metrics": [
+        {
+          "key": "endpoint_setup",
+          "value": "75%",
+          "label": "less manual setup time",
+          "statement": "Reduced manual workstation setup time by 75% through Batch deployment automation.",
+          "context": "Simple Tech Innovations",
+          "featured": true
+        }
+      ]
     },
     {
-      "name": "Active Directory User Export Tool",
-      "description": "Active Directory export utility that reduced large user-information requests from hours or days to seconds.",
+      "name": "Active Directory Reporting Tool",
+      "description": "Large requests for user information required repetitive manual lookup and formatting. I wrote a PowerShell tool with a small Windows Forms input, recursive Active Directory group lookup, and CSV export for name, email, and SAM account name.",
+      "highlights": [
+        "Large Active Directory group-information requests required repetitive manual lookup and formatting.",
+        "Built a simple interface that recursively queried Active Directory group membership and exported name, email, and SAM account name to CSV.",
+        "Made large Active Directory exports repeatable and fast.",
+        "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds."
+      ],
+      "keywords": [
+        "PowerShell",
+        "Active Directory",
+        "Windows Forms",
+        "CSV"
+      ],
       "url": "https://github.com/Jessomadic/AD-Export-Tool",
-      "keywords": ["Active Directory", "Group Policy", "help desk", "automation"]
+      "type": "Infrastructure Case Study",
+      "metrics": [
+        {
+          "key": "ad_reporting",
+          "value": "Hours or days → seconds",
+          "label": "large Active Directory exports",
+          "statement": "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
+          "context": "University of Rochester Medical Center",
+          "featured": false
+        }
+      ]
+    },
+    {
+      "name": "Laptop Battery-Life Benchmarking",
+      "description": "Laptop battery testing meant repeating the same video, audio, and office workloads while keeping clean records. I built a tool to run the cycles, track usage, generate reports, and shut the system down safely when testing finished.",
+      "highlights": [
+        "Repeatable battery-life testing required consistent workloads, reliable tracking, and usable reports.",
+        "Automated the test cycles, usage tracking, report generation, and safe shutdown behavior.",
+        "Turned a repetitive test routine into a consistent internal benchmarking process."
+      ],
+      "keywords": [
+        "Automated Testing",
+        "Reporting",
+        "Windows Endpoints"
+      ],
+      "type": "Internal Project"
     },
     {
       "name": "DungeonMasterVault",
-      "description": "Clojure-based PDF generation maintenance for a widely used free SRD 5e character creator.",
+      "description": "I contributed to the Clojure PDF-generation work behind exported character sheets for DungeonMasterVault's free SRD 5e character creator.",
+      "highlights": [],
+      "keywords": [
+        "Clojure",
+        "PDF Generation"
+      ],
       "url": "https://github.com/Orcpub/orcpub",
-      "keywords": ["Clojure", "PDF generation", "open source"]
+      "type": "Software Project"
+    },
+    {
+      "name": "Media Transcoding Plugin",
+      "description": "I wanted predictable output instead of a vague quality preset, so I wrote a Tdarr plugin that lets me choose the encoder, bitrate, maximum resolution, container, and audio format. It builds the HandBrake command from those choices and supports AV1, H.265, H.264, MP4 or MKV, and several audio formats.",
+      "highlights": [],
+      "keywords": [
+        "JavaScript",
+        "Tdarr",
+        "HandBrake"
+      ],
+      "url": "https://github.com/Jessomadic/Tdarr_Transcode_Plugin",
+      "type": "Software Project"
+    },
+    {
+      "name": "Lyrics4Spotify",
+      "description": "Before lyrics were built into Spotify's apps, I made a Rainmeter desktop display that watched the current track and fetched matching lyrics from MusixMatch and Genius.",
+      "highlights": [],
+      "keywords": [
+        "Spotify API",
+        "MusixMatch",
+        "Genius",
+        "Rainmeter",
+        "Lua"
+      ],
+      "url": "https://github.com/Jessomadic/Lyrics4Spotify",
+      "type": "Software Project"
     }
   ],
-  "certificates": [
-    { "name": "CompTIA A+ Certification", "issuer": "CompTIA" },
-    { "name": "SonicWall Network Security Administrator (SNSA)", "issuer": "SonicWall" },
-    { "name": "3CX Basic Certified Engineer", "issuer": "3CX" },
-    { "name": "Microsoft Entra SC-300T00-A Certified", "issuer": "Microsoft" },
-    { "name": "HP Enterprise Server Service Certification", "issuer": "HP" },
-    { "name": "HP A3/A4 Printer Repair Certifications", "issuer": "HP" }
-  ]
+  "metrics": [
+    {
+      "key": "endpoint_setup",
+      "value": "75%",
+      "label": "less manual setup time",
+      "statement": "Reduced manual workstation setup time by 75% through Batch deployment automation.",
+      "context": "Simple Tech Innovations",
+      "featured": true
+    },
+    {
+      "key": "msp_clients",
+      "value": "~150",
+      "label": "MSP clients",
+      "statement": "Supported roughly 150 MSP clients as part of a three-person technical team.",
+      "context": "Simple Tech Innovations",
+      "featured": true
+    },
+    {
+      "key": "healthcare_scale",
+      "value": "45K / 20K / 400+",
+      "label": "employees / devices / applications",
+      "statement": "Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.",
+      "context": "University of Rochester Medical Center",
+      "featured": true
+    },
+    {
+      "key": "help_desk_volume",
+      "value": "500–1,000",
+      "label": "daily calls handled by a 15-person team",
+      "statement": "Worked on a 15-person help desk team handling 500–1,000 calls per day.",
+      "context": "University of Rochester Medical Center",
+      "featured": false
+    },
+    {
+      "key": "field_workload",
+      "value": "2–5 / 400 mi",
+      "label": "daily tickets / longest routes",
+      "statement": "Handled 2–5 field-service tickets per day across routes of up to 400 miles.",
+      "context": "HEMMERSBACH US LLC",
+      "featured": false
+    },
+    {
+      "key": "ad_reporting",
+      "value": "Hours or days → seconds",
+      "label": "large Active Directory exports",
+      "statement": "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
+      "context": "University of Rochester Medical Center",
+      "featured": false
+    }
+  ],
+  "meta": {
+    "canonical": "https://jessecopas.com/resume/",
+    "pdf": "https://jessecopas.com/resume/Jesse-Copas-Systems-Administrator-Resume.pdf",
+    "lastModified": "August 15, 2026"
+  }
 }
