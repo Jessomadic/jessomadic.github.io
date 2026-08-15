@@ -1,4 +1,11 @@
 (function () {
+  function updateLocalTime() {
+    document.querySelectorAll("#local-time, #mobile-local-time").forEach(function (element) {
+      var now = new Date();
+      element.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    });
+  }
+
   function applyTheme(isDarkMode) {
     document.documentElement.classList.toggle("dark", isDarkMode);
     localStorage.setItem("color-theme", isDarkMode ? "dark" : "light");
@@ -13,7 +20,6 @@
   function showToaster(message) {
     var toaster = document.createElement("div");
     toaster.className = "toaster";
-    toaster.setAttribute("role", "status");
     toaster.textContent = message;
     document.body.appendChild(toaster);
     window.setTimeout(function () {
@@ -39,44 +45,21 @@
     );
   };
 
-  function updateRochesterTime() {
-    var now = new Date();
-    var formatter = new Intl.DateTimeFormat([], {
-      timeZone: "America/New_York",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZoneName: "short"
-    });
-
-    document.querySelectorAll("[data-local-time]").forEach(function (element) {
-      element.dateTime = now.toISOString();
-      element.textContent = formatter.format(now);
-    });
-  }
-
   document.addEventListener("DOMContentLoaded", function () {
     var mobileMenu = document.getElementById("mobile-menu");
     var mobileMenuButton = document.getElementById("mobile-menu-button");
     var mobileMenuClose = document.getElementById("mobile-menu-close");
-    var lastFocusedElement = null;
 
     function openMobileMenu() {
       if (!mobileMenu) return;
-      lastFocusedElement = document.activeElement;
       mobileMenu.classList.remove("hidden");
-      mobileMenu.setAttribute("aria-hidden", "false");
-      if (mobileMenuButton) mobileMenuButton.setAttribute("aria-expanded", "true");
       document.body.style.overflow = "hidden";
-      if (mobileMenuClose) mobileMenuClose.focus();
     }
 
     function closeMobileMenu() {
       if (!mobileMenu) return;
       mobileMenu.classList.add("hidden");
-      mobileMenu.setAttribute("aria-hidden", "true");
-      if (mobileMenuButton) mobileMenuButton.setAttribute("aria-expanded", "false");
       document.body.style.overflow = "";
-      if (lastFocusedElement && typeof lastFocusedElement.focus === "function") lastFocusedElement.focus();
     }
 
     if (mobileMenuButton) mobileMenuButton.addEventListener("click", openMobileMenu);
@@ -101,10 +84,11 @@
     document.querySelectorAll("[data-theme-toggle]").forEach(function (button) {
       button.addEventListener("click", function () {
         applyTheme(!document.documentElement.classList.contains("dark"));
+        if (window.innerWidth < 768) closeMobileMenu();
       });
     });
 
-    updateRochesterTime();
-    window.setInterval(updateRochesterTime, 30000);
+    updateLocalTime();
+    window.setInterval(updateLocalTime, 60000);
   });
 })();

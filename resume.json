@@ -1,14 +1,12 @@
 {
-  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/schema.json",
   "basics": {
     "name": "Jesse Copas",
-    "label": "Systems Administrator & Infrastructure Engineer",
+    "label": "Technical Engineer | IT Support | Endpoint Deployment | Automation",
     "email": "Jessecopas@gmail.com",
-    "url": "https://jessecopas.com",
-    "summary": "Rochester-based infrastructure professional with MSP, healthcare, and field-engineering experience. I administer, troubleshoot, automate, and improve Windows, identity, endpoint, network, and cloud environments.",
+    "url": "https://jessecopas.com/",
     "location": {
       "city": "Rochester",
-      "region": "New York",
+      "region": "NY",
       "countryCode": "US"
     },
     "profiles": [
@@ -22,298 +20,125 @@
         "username": "jesse-copas-50339b174",
         "url": "https://www.linkedin.com/in/jesse-copas-50339b174/"
       }
-    ]
+    ],
+    "summary": "Technical Engineer focused on IT support, endpoint deployment, automation, Active Directory tooling, and practical systems improvement."
   },
+  "targetRoles": [
+    "Technical Engineer",
+    "IT Support Engineer",
+    "Systems Support Specialist",
+    "Endpoint Deployment Technician",
+    "Help Desk Analyst",
+    "Field Service Technician",
+    "Desktop Support Engineer",
+    "MSP Technician",
+    "Junior Systems Administrator"
+  ],
+  "skills": [
+    {
+      "name": "IT Support",
+      "keywords": ["help desk", "desktop support", "user support", "remote support", "on-site support"]
+    },
+    {
+      "name": "Endpoint Deployment",
+      "keywords": ["Windows deployment", "new computer setup", "imaging", "VSS live imaging", "deployment automation"]
+    },
+    {
+      "name": "Directory and Enterprise Tools",
+      "keywords": ["Active Directory", "Microsoft Entra", "SC-300T00-A", "identity administration", "Group Policy", "Citrix Workspace", "ServiceNow", "Epic support"]
+    },
+    {
+      "name": "Automation and Scripting",
+      "keywords": ["Batch", "Python", "PowerShell", "Clojure", "support tooling"]
+    },
+    {
+      "name": "Hardware and Field Service",
+      "keywords": ["HP laptops", "HP desktops", "A3/A4 printers", "servers", "storage hardware", "component replacement"]
+    }
+  ],
   "work": [
     {
       "name": "Microworx",
       "position": "Technical Engineer",
-      "dateRange": "April 2024 - Present",
-      "summary": "Build and improve internal deployment, imaging, benchmarking, and ticketing tools using VSS live imaging, Python, JavaScript, and SQL workflows.",
+      "startDate": "2024-04",
+      "summary": "Develops in-house support tools, imaging workflows, benchmarking tools, and ticketing modernization work.",
       "highlights": [
-        "Build and improve internal deployment, imaging, benchmarking, and ticketing tools using VSS live imaging, Python, JavaScript, and SQL workflows.",
-        "Developed a VSS live-imaging and delta-merging workflow to reduce recurring software costs and endpoint deployment time.",
-        "Modernized legacy Perl, PHP, and SQL ticketing workflows into a more maintainable Python-based internal system.",
-        "Partner with business clients on technical support, system design, hardware specifications, and project execution.",
-        "Diagnose varied technical issues and design practical systems for server, desktop, and laptop requirements."
-      ],
-      "environment": [
-        "Windows endpoint deployment",
-        "VSS live imaging",
-        "Python",
-        "JavaScript",
-        "Microsoft SQL Server",
-        "Perl",
-        "PHP",
-        "Servers",
-        "Desktops",
-        "Laptops"
+        "Develop in-house tools for imaging, benchmarking, ticketing modernization, and repeatable endpoint deployment.",
+        "Built an imaging workflow using VSS live imaging and delta merging to reduce recurring software costs and deployment time.",
+        "Refactored legacy Perl/PHP ticketing and SQL workflows into a more maintainable Python-based environment.",
+        "Partner with business clients on technical support, system design, hardware specification, and project execution."
       ]
     },
     {
-      "name": "HEMMERSBACH US LLC",
+      "name": "Hemmersbach US LLC",
       "position": "Hewlett-Packard Enterprise Field Technician",
-      "dateRange": "May 2023 - Nov 2023",
-      "summary": "Handled 2-5 daily field service tickets across routes up to 400 miles for enterprise hardware repair.",
+      "startDate": "2023-05",
+      "endDate": "2023-11",
+      "summary": "Enterprise field service across HP laptops, desktops, printers, servers, and storage hardware.",
       "highlights": [
         "Handled 2-5 daily field service tickets across routes up to 400 miles for enterprise hardware repair.",
         "Repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware in client environments.",
-        "Performed component replacement, diagnostics, hardware installation, and server network integration.",
-        "Maintained clear field communication while working independently across varied customer sites."
-      ],
-      "environment": [
-        "HP enterprise servers",
-        "Storage",
-        "A3/A4 printers",
-        "Laptops",
-        "Desktops",
-        "Hardware diagnostics",
-        "Network integration"
+        "Performed component replacement, diagnostics, hardware installation, and server network integration."
       ]
     },
     {
       "name": "Simple Tech Innovations",
       "position": "Network Engineer",
-      "dateRange": "Nov 2022 - May 2023",
-      "summary": "Built deployment automation that reduced new-computer setup time by 75% and improved consistency.",
+      "startDate": "2022-11",
+      "endDate": "2023-05",
+      "summary": "MSP support, deployment, repair, and client troubleshooting.",
       "highlights": [
-        "Built deployment automation that reduced new-computer setup time by 75% and improved consistency.",
+        "Built a deployment automation script that reduced new-computer setup time by 75% and improved consistency.",
         "Supported roughly 150 MSP clients as part of a three-person technical team.",
-        "Delivered remote help desk support, on-site troubleshooting, equipment repair, and new hardware deployments.",
-        "Installed and supported computers, printers, access points, network drops, and related infrastructure."
-      ],
-      "environment": [
-        "Windows deployment",
-        "MSP support",
-        "Batch automation",
-        "Workstations",
-        "Printers",
-        "Wireless access points",
-        "Network drops"
+        "Delivered remote help desk support, on-site troubleshooting, equipment repair, and new hardware deployments."
       ]
     },
     {
       "name": "University of Rochester Medical Center",
       "position": "Help Desk - IT Analyst",
-      "dateRange": "March 2022 - Oct 2022",
-      "summary": "Supported an enterprise healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.",
+      "startDate": "2022-03",
+      "endDate": "2022-10",
+      "summary": "High-volume healthcare IT support across users, devices, and enterprise applications.",
       "highlights": [
-        "Supported an enterprise healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.",
+        "Supported 45,000 employees, 20,000 devices, and 400+ applications across University of Rochester medical environments.",
         "Worked in a 15-person help desk team handling 500-1000 daily calls.",
         "Built an Active Directory export tool that reduced large user-information requests from hours or days to seconds.",
         "Supported Active Directory, Citrix Workspace, ServiceNow, Epic access issues, account permissions, malware cleanup, and password resets."
-      ],
-      "environment": [
-        "Active Directory",
-        "Citrix Workspace",
-        "ServiceNow",
-        "Epic",
-        "Windows endpoints",
-        "Account permissions",
-        "Enterprise healthcare IT"
-      ]
-    },
-    {
-      "name": "Dave and Buster's, Inc",
-      "position": "Game Repair and IT Support",
-      "dateRange": "March 2021 - March 2022",
-      "summary": "Repaired arcade hardware, including component-level troubleshooting and full cabinet rebuilds.",
-      "highlights": [
-        "Repaired arcade hardware, including component-level troubleshooting and full cabinet rebuilds.",
-        "Maintained software for game systems and internal workstations.",
-        "Provided staff IT support for printers, passwords, and workstation issues."
-      ],
-      "environment": [
-        "Arcade hardware",
-        "Windows workstations",
-        "Printers",
-        "Component diagnostics"
-      ]
-    },
-    {
-      "name": "The Home Depot",
-      "position": "Electrical Associate",
-      "dateRange": "Nov 2018 - April 2020",
-      "summary": "Managed department operations independently and advised customers and contractors on electrical products, smart-home devices, setup, and troubleshooting.",
-      "highlights": [
-        "Managed department operations independently and advised customers and contractors on electrical products, smart-home devices, setup, and troubleshooting."
-      ]
-    }
-  ],
-  "education": [
-    {
-      "institution": "Irondequoit High School",
-      "area": "General Studies",
-      "studyType": "High School Diploma",
-      "endDate": "2017"
-    }
-  ],
-  "certificates": [
-    {
-      "name": "CompTIA A+",
-      "issuer": "CompTIA",
-      "type": "Certification"
-    },
-    {
-      "name": "SonicWall Network Security Administrator (SNSA)",
-      "issuer": "SonicWall",
-      "type": "Certification"
-    },
-    {
-      "name": "3CX Basic Certified Engineer",
-      "issuer": "3CX",
-      "type": "Certification"
-    },
-    {
-      "name": "HP Enterprise Server Service Certification",
-      "issuer": "HP",
-      "type": "Certification"
-    },
-    {
-      "name": "HP A3/A4 Printer Repair Certifications",
-      "issuer": "HP",
-      "type": "Certification"
-    },
-    {
-      "name": "Microsoft SC-300T00-A Training - Identity and Access Administrator",
-      "issuer": "Microsoft",
-      "type": "Training"
-    }
-  ],
-  "skills": [
-    {
-      "name": "Core Infrastructure",
-      "keywords": [
-        "Windows Server",
-        "Active Directory",
-        "Group Policy",
-        "Endpoint imaging",
-        "Workstation deployment",
-        "Server and storage hardware"
-      ]
-    },
-    {
-      "name": "Microsoft Cloud & Endpoint",
-      "keywords": [
-        "Microsoft 365",
-        "Entra ID",
-        "Identity administration",
-        "Endpoint deployment",
-        "Windows deployment"
-      ]
-    },
-    {
-      "name": "Networking & Security",
-      "keywords": [
-        "SonicWall",
-        "Wireless access points",
-        "Network drops",
-        "Server network integration",
-        "Hardware diagnostics"
-      ]
-    },
-    {
-      "name": "Automation & Tooling",
-      "keywords": [
-        "PowerShell",
-        "Python",
-        "Microsoft SQL Server",
-        "Git",
-        "GitHub Actions",
-        "Batch",
-        "Docker"
       ]
     }
   ],
   "projects": [
     {
-      "name": "NewComputerSetup",
-      "description": "I built a customizable Batch setup script at an MSP to turn a repetitive, hour-plus workstation setup into a consistent process, even when PXE was not available.",
-      "highlights": [
-        "New-computer setup required more than an hour of repetitive manual configuration per machine.",
-        "Built customizable automation to apply software, configuration, and deployment steps consistently.",
-        "Reduced setup time by 75% while improving repeatability across client deployments."
-      ],
-      "keywords": [
-        "Batch",
-        "Windows Deployment",
-        "Endpoint Administration"
-      ],
-      "url": "https://github.com/Jessomadic/NewComputerSetup/tree/Main",
-      "type": "Infrastructure Case Study"
-    },
-    {
-      "name": "Active Directory Reporting Automation",
-      "description": "I built this Active Directory export tool after seeing large user-information requests consume hours or days at the University of Rochester help desk. It turns that work into a repeatable export that runs in seconds.",
-      "highlights": [
-        "Requests covering hundreds or thousands of accounts could take hours or days to assemble manually.",
-        "Created an export utility that collected the required account data in a consistent format.",
-        "Reduced turnaround from hours or days to seconds."
-      ],
-      "keywords": [
-        "Active Directory",
-        "Scripting",
-        "Group Policy"
-      ],
-      "url": "https://github.com/Jessomadic/AD-Export-Tool",
-      "type": "Infrastructure Case Study"
-    },
-    {
       "name": "Internal Ticketing & POS Operations System",
-      "description": "I built an internal Python and JavaScript platform to keep tickets, time, pricing, parts, and computer-build details in one MSSQL-backed workflow connected to the existing point-of-sale system.",
-      "highlights": [
-        "Tickets, time, pricing, parts, and computer-build details needed one maintainable operational record.",
-        "Built a Python and JavaScript application with MSSQL-backed tracking and POS integration.",
-        "Centralized service and build operations in one internal workflow."
-      ],
-      "keywords": [
-        "Python",
-        "JavaScript",
-        "MSSQL",
-        "POS Integration"
-      ],
-      "type": "Infrastructure Case Study"
+      "description": "Internal ticketing platform built with Python, JavaScript, and MSSQL to track work, time, pricing, parts, and computer builds while integrating with the company POS system.",
+      "url": "",
+      "keywords": ["Python", "JavaScript", "MSSQL", "ticketing system", "POS integration", "internal tooling", "operations tracking"]
+    },
+    {
+      "name": "Automated Computer Setup Script",
+      "description": "Customizable Windows deployment automation that reduced new computer configuration by more than an hour per machine.",
+      "url": "https://github.com/Jessomadic/NewComputerSetup/tree/Main",
+      "keywords": ["Batch", "Windows deployment", "endpoint deployment", "automation"]
+    },
+    {
+      "name": "Active Directory User Export Tool",
+      "description": "Active Directory export utility that reduced large user-information requests from hours or days to seconds.",
+      "url": "https://github.com/Jessomadic/AD-Export-Tool",
+      "keywords": ["Active Directory", "Group Policy", "help desk", "automation"]
     },
     {
       "name": "DungeonMasterVault",
-      "description": "I worked with the DungeonMasterVault team on the Clojure-based PDF generation behind exported D&D character sheets for its free SRD 5e character creator.",
-      "highlights": [],
-      "keywords": [
-        "Clojure",
-        "PDF Generation"
-      ],
+      "description": "Clojure-based PDF generation maintenance for a widely used free SRD 5e character creator.",
       "url": "https://github.com/Orcpub/orcpub",
-      "type": "Software Project"
-    },
-    {
-      "name": "Lyrics4Spotify",
-      "description": "Years before Spotify added lyrics to its apps, I built Lyrics4Spotify to follow the song I was playing, fetch lyrics through MusixMatch, and display them on the desktop with Rainmeter and Lua.",
-      "highlights": [],
-      "keywords": [
-        "Spotify API",
-        "MusixMatch API",
-        "Rainmeter",
-        "Lua"
-      ],
-      "url": "https://github.com/Jessomadic/Lyrics4Spotify",
-      "type": "Software Project"
-    },
-    {
-      "name": "Media Transcoding Plugin",
-      "description": "I wrote a JavaScript plugin for Tdarr that lets me choose the encoder, bitrate, resolution, container, and audio format instead of relying on a broad quality preset.",
-      "highlights": [],
-      "keywords": [
-        "JavaScript",
-        "Tdarr",
-        "FFmpeg"
-      ],
-      "url": "https://github.com/Jessomadic/Tdarr_Transcode_Plugin",
-      "type": "Software Project"
+      "keywords": ["Clojure", "PDF generation", "open source"]
     }
   ],
-  "meta": {
-    "canonical": "https://jessecopas.com/resume/",
-    "pdf": "https://jessecopas.com/resume/Jesse-Copas-Systems-Administrator-Resume.pdf",
-    "lastModified": "August 15, 2026"
-  }
+  "certificates": [
+    { "name": "CompTIA A+ Certification", "issuer": "CompTIA" },
+    { "name": "SonicWall Network Security Administrator (SNSA)", "issuer": "SonicWall" },
+    { "name": "3CX Basic Certified Engineer", "issuer": "3CX" },
+    { "name": "Microsoft Entra SC-300T00-A Certified", "issuer": "Microsoft" },
+    { "name": "HP Enterprise Server Service Certification", "issuer": "HP" },
+    { "name": "HP A3/A4 Printer Repair Certifications", "issuer": "HP" }
+  ]
 }
