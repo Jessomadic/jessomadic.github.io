@@ -1,0 +1,16 @@
+{
+  "name": "Jesse Copas - Systems Administrator & Infrastructure Engineer",
+  "short_name": "Jesse Copas",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#155eef",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

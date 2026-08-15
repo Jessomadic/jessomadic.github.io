@@ -1,58 +1,16 @@
-# Jesse Copas
+JESSE COPAS - SYSTEMS ADMINISTRATOR
+Rochester, NY | Jessecopas@gmail.com | https://jessecopas.com
 
-> Rochester-based systems administrator with MSP and enterprise experience in Windows Server, Active Directory, Group Policy, Microsoft 365, Entra ID, SonicWall, endpoint deployment, networking, and PowerShell automation.
+PROFILE
+Systems administrator with MSP, enterprise healthcare, and field-engineering experience across Windows Server, Active Directory, Group Policy, Microsoft 365, Entra ID, endpoint deployment, networking, and PowerShell automation.
 
-Canonical website: https://jessecopas.com/
-HTML resume: https://jessecopas.com/resume/
-PDF resume: https://jessecopas.com/resume/Jesse-Copas-Systems-Administrator-Resume.pdf
-JSON resume: https://jessecopas.com/resume.json
-Plain-text resume: https://jessecopas.com/resume.txt
-
-## Professional focus
-
-Systems Administrator & Infrastructure Engineer based in Rochester, NY. Open to permanent local, hybrid, and appropriate remote roles.
-
-## Core capabilities
-
+RELEVANT CAPABILITIES
 Core Infrastructure: Windows Server, Active Directory, Group Policy, Endpoint imaging, Workstation deployment, Server and storage hardware
 Microsoft Cloud & Endpoint: Microsoft 365, Entra ID, Identity administration, Endpoint deployment, Windows deployment
 Networking & Security: SonicWall, Wireless access points, Network drops, Server network integration, Hardware diagnostics
 Automation & Tooling: PowerShell, Python, Microsoft SQL Server, Git, GitHub Actions, Batch, Docker
 
-## Evidence
-
-- Reduced endpoint setup time by 75% with deployment automation.
-- Supported roughly 150 MSP clients within a three-person technical team.
-- Supported a healthcare environment serving 45,000 employees and 20,000 devices.
-- Reduced large Active Directory reporting requests from hours or days to seconds.
-
-## Selected case studies
-
-Endpoint Imaging & Deployment Automation
-Problem: New-computer setup required more than an hour of repetitive manual configuration per machine.
-Environment: Windows workstations, MSP client standards, non-PXE deployment environments
-Actions: Built customizable automation to apply software, configuration, and deployment steps consistently.
-Result: Reduced setup time by 75% while improving repeatability across client deployments.
-Technologies: Batch, Windows Deployment, Endpoint Administration
-Repository: https://github.com/Jessomadic/NewComputerSetup/tree/Main
-
-Active Directory Reporting Automation
-Problem: Requests covering hundreds or thousands of accounts could take hours or days to assemble manually.
-Environment: Enterprise Active Directory, Group Policy, healthcare help desk operations
-Actions: Created an export utility that collected the required account data in a consistent format.
-Result: Reduced turnaround from hours or days to seconds.
-Technologies: Active Directory, Scripting, Group Policy
-Repository: https://github.com/Jessomadic/AD-Export-Tool
-
-Internal Ticketing & POS Operations System
-Problem: Tickets, time, pricing, parts, and computer-build details needed one maintainable operational record.
-Environment: Internal business operations, existing POS system, Microsoft SQL Server
-Actions: Built a Python and JavaScript application with MSSQL-backed tracking and POS integration.
-Result: Centralized service and build operations in one internal workflow.
-Technologies: Python, JavaScript, MSSQL, POS Integration
-
-## Experience
-
+RELEVANT EXPERIENCE
 Technical Engineer | Microworx | April 2024 - Present
 - Build and improve internal deployment, imaging, benchmarking, and ticketing tools using VSS live imaging, Python, JavaScript, and SQL workflows.
 - Developed a VSS live-imaging and delta-merging workflow to reduce recurring software costs and endpoint deployment time.
@@ -82,31 +40,36 @@ Help Desk - IT Analyst | University of Rochester Medical Center | March 2022 - O
 - Supported Active Directory, Citrix Workspace, ServiceNow, Epic access issues, account permissions, malware cleanup, and password resets.
 Environment: Active Directory, Citrix Workspace, ServiceNow, Epic, Windows endpoints, Account permissions, Enterprise healthcare IT
 
-Game Repair and IT Support | Dave and Buster's, Inc | March 2021 - March 2022
-- Repaired arcade hardware, including component-level troubleshooting and full cabinet rebuilds.
-- Maintained software for game systems and internal workstations.
-- Provided staff IT support for printers, passwords, and workstation issues.
-Environment: Arcade hardware, Windows workstations, Printers, Component diagnostics
+INFRASTRUCTURE CASE STUDIES
+Endpoint Imaging & Deployment Automation
+Problem: New-computer setup required more than an hour of repetitive manual configuration per machine.
+Environment: Windows workstations, MSP client standards, non-PXE deployment environments
+Actions: Built customizable automation to apply software, configuration, and deployment steps consistently.
+Result: Reduced setup time by 75% while improving repeatability across client deployments.
+Technologies: Batch, Windows Deployment, Endpoint Administration
+Repository: https://github.com/Jessomadic/NewComputerSetup/tree/Main
 
-Electrical Associate | The Home Depot | Nov 2018 - April 2020
-- Managed department operations independently and advised customers and contractors on electrical products, smart-home devices, setup, and troubleshooting.
+Active Directory Reporting Automation
+Problem: Requests covering hundreds or thousands of accounts could take hours or days to assemble manually.
+Environment: Enterprise Active Directory, Group Policy, healthcare help desk operations
+Actions: Created an export utility that collected the required account data in a consistent format.
+Result: Reduced turnaround from hours or days to seconds.
+Technologies: Active Directory, Scripting, Group Policy
+Repository: https://github.com/Jessomadic/AD-Export-Tool
 
-## Credentials
+Internal Ticketing & POS Operations System
+Problem: Tickets, time, pricing, parts, and computer-build details needed one maintainable operational record.
+Environment: Internal business operations, existing POS system, Microsoft SQL Server
+Actions: Built a Python and JavaScript application with MSSQL-backed tracking and POS integration.
+Result: Centralized service and build operations in one internal workflow.
+Technologies: Python, JavaScript, MSSQL, POS Integration
 
-Certifications:
+CERTIFICATIONS
 - CompTIA A+ - CompTIA
 - SonicWall Network Security Administrator (SNSA) - SonicWall
 - 3CX Basic Certified Engineer - 3CX
 - HP Enterprise Server Service Certification - HP
 - HP A3/A4 Printer Repair Certifications - HP
 
-Training:
+TRAINING
 - Microsoft SC-300T00-A Training - Identity and Access Administrator - Microsoft
-
-## Contact
-
-Email: Jessecopas@gmail.com
-LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/
-GitHub: https://github.com/Jessomadic
-
-Last updated: August 15, 2026
