@@ -17,8 +17,9 @@ Automation & Tooling: PowerShell, Batch, Python, JavaScript, Microsoft SQL Serve
 
 TECHNICAL EXPERIENCE
 Technical Engineer | Microworx | April 2024 - Present
-- Designed and built a custom ticketing and POS operations system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing point-of-sale workflow—without adapting a packaged ticketing platform.
-- Developed a VSS live-imaging and delta-merging workflow that reduced recurring software costs and shortened endpoint deployment.
+- Reduced endpoint deployment time by an average of 40% and improved stability by restoring programs and data onto a fresh Windows installation instead of carrying forward OS corruption.
+- Designed and built a custom ticketing and POS operations system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing point-of-sale workflow; the system fully replaced and retired the legacy Perl/PHP ticketing workflow without relying on a packaged platform.
+- Developed a VSS live-imaging and delta-merging workflow that restored programs and data onto a fresh Windows installation.
 - Built a laptop battery-life benchmarking tool that automated video, audio, and office test cycles, tracked usage, generated reports, and shut systems down safely.
 - Work directly with business clients on troubleshooting, technical projects, and specifications for servers, desktops, and laptops.
 Environment: Windows endpoint deployment, VSS live imaging, Python, JavaScript, Microsoft SQL Server, Perl, PHP, Servers, Desktops, Laptops
@@ -59,14 +60,15 @@ Custom Ticketing & POS Operations System
 Problem: The legacy Perl and PHP process did not give tickets, labor, pricing, parts, and computer-build details one maintainable operational record.
 Environment: Internal business operations, existing POS workflow, Microsoft SQL Server
 Actions: Designed and built a custom Python and JavaScript application from the ground up without adapting a commercial or open-source ticketing base.
-Result: Created one maintainable system built around the business's actual workflow.
+Result: Fully replaced and retired the legacy Perl/PHP ticketing workflow with one maintainable system built around the business's actual operations.
 Technologies: Python, JavaScript, Microsoft SQL Server, POS Integration
 
 VSS Live-Imaging Workflow
-Problem: The existing imaging process carried recurring software costs and slowed endpoint deployment.
+Problem: The existing imaging process slowed endpoint deployment and could carry operating-system corruption into the replacement system.
 Environment: Windows endpoint deployment, live systems, Volume Shadow Copy Service
-Actions: Developed an in-house live-imaging and delta-merging workflow around VSS.
-Result: Reduced recurring software costs and shortened endpoint deployment.
+Actions: Developed an in-house VSS live-imaging and delta-merging workflow that restored programs and data onto a fresh Windows installation.
+Result: Improved deployment stability by avoiding corruption carried forward from the previous Windows installation.
+Evidence: Reduced endpoint deployment time by an average of 40% and improved stability by restoring programs and data onto a fresh Windows installation instead of carrying forward OS corruption.
 Technologies: VSS, Windows Deployment, Endpoint Imaging
 
 NewComputerSetup
