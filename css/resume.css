@@ -1,31 +1,35 @@
 :root {
   color-scheme: light dark;
-  --page: #f5f7fa;
+  --page: #ffffff;
   --surface: #ffffff;
-  --surface-subtle: #edf1f5;
-  --ink: #20242b;
-  --muted: #515862;
-  --faint: #606873;
-  --line: #cdd3da;
-  --line-soft: #dfe3e8;
-  --accent: #0369a1;
-  --accent-strong: #075985;
-  --signal: #00a9d6;
+  --surface-subtle: #f8fafc;
+  --ink: #1f2937;
+  --muted: #525252;
+  --faint: #737373;
+  --line: #d4d4d8;
+  --line-soft: #e5e7eb;
+  --accent: #0284c7;
+  --accent-readable: #017bbd;
+  --accent-action: #017bbd;
+  --accent-strong: #0369a1;
+  --signal: #0ea5e9;
   --shadow: 0 16px 42px rgba(23, 32, 45, 0.08);
 }
 
 html.dark {
-  --page: #111111;
+  --page: #121212;
   --surface: #1a1a1a;
   --surface-subtle: #222222;
   --ink: #f3f4f6;
-  --muted: #b4b4b8;
-  --faint: #8c8f96;
-  --line: #3a4049;
-  --line-soft: #292e35;
+  --muted: #a3a3a3;
+  --faint: #808080;
+  --line: #374151;
+  --line-soft: #27272a;
   --accent: #38bdf8;
+  --accent-readable: #38bdf8;
+  --accent-action: #38bdf8;
   --accent-strong: #7dd3fc;
-  --signal: #00d9ff;
+  --signal: #0ea5e9;
   --shadow: 0 20px 46px rgba(0, 0, 0, 0.22);
 }
 
@@ -61,7 +65,7 @@ button {
 a:focus-visible,
 button:focus-visible,
 summary:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline: 3px solid var(--accent-action);
   outline-offset: 3px;
 }
 
@@ -72,7 +76,7 @@ summary:focus-visible {
   z-index: 100;
   transform: translateY(-200%);
   border-radius: 0.4rem;
-  background: var(--accent);
+  background: var(--accent-action);
   color: #ffffff;
   padding: 0.65rem 0.9rem;
   font-weight: 700;
@@ -104,7 +108,7 @@ summary:focus-visible {
   place-items: center;
   border: 1px solid var(--accent);
   border-radius: 0.45rem;
-  color: var(--accent);
+  color: var(--accent-readable);
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.82rem;
   font-weight: 600;
@@ -248,7 +252,7 @@ summary:focus-visible {
 .experience-period,
 .resume-meta-label {
   margin: 0;
-  color: var(--accent);
+  color: var(--accent-readable);
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.72rem;
   font-weight: 600;
@@ -268,7 +272,7 @@ summary:focus-visible {
 
 .hero-title span {
   display: block;
-  color: var(--accent);
+  color: var(--accent-readable);
   font-size: 0.65em;
   letter-spacing: -0.04em;
   line-height: 1.08;
@@ -316,8 +320,8 @@ summary:focus-visible {
 }
 
 .primary-action {
-  border: 1px solid var(--accent);
-  background: var(--accent);
+  border: 1px solid var(--accent-action);
+  background: var(--accent-action);
   color: #ffffff;
 }
 
@@ -332,7 +336,7 @@ html.dark .primary-action {
 }
 
 .quiet-action {
-  color: var(--accent);
+  color: var(--accent-readable);
 }
 
 .primary-action:hover,
@@ -348,7 +352,7 @@ html.dark .primary-action {
 
 .secondary-action:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-readable);
 }
 
 .profile-links {
@@ -368,7 +372,7 @@ html.dark .primary-action {
 }
 
 .profile-links a:hover {
-  color: var(--accent);
+  color: var(--accent-readable);
   text-decoration-color: var(--accent);
 }
 
@@ -566,7 +570,7 @@ html.dark .primary-action {
 
 .additional-tools span {
   margin-right: 0.75rem;
-  color: var(--accent);
+  color: var(--accent-readable);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -685,7 +689,7 @@ html.dark .primary-action {
 
 .environment-line span {
   margin-right: 0.6rem;
-  color: var(--accent);
+  color: var(--accent-readable);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -798,7 +802,7 @@ html.dark .primary-action {
 
 .icon-button:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-readable);
   transform: translateY(-1px);
 }
 
@@ -810,7 +814,7 @@ html.dark .primary-action {
 }
 
 .stat-number {
-  color: var(--accent);
+  color: var(--accent-readable);
   font-size: 1.9rem;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -904,7 +908,7 @@ html.dark .primary-action {
 
 .text-link,
 .animated-link {
-  color: var(--accent);
+  color: var(--accent-readable);
   font-weight: 750;
   text-decoration: none;
 }
@@ -1103,7 +1107,7 @@ html.dark .primary-action {
 
 .home-greeting {
   margin: 0;
-  color: var(--accent);
+  color: var(--accent-readable);
   font-size: clamp(1rem, 2vw, 1.18rem);
   font-weight: 650;
 }
@@ -1180,7 +1184,7 @@ html.dark .primary-action {
 
 .plain-label {
   margin: 0;
-  color: var(--accent);
+  color: var(--accent-readable);
   font-size: 0.78rem;
   font-weight: 650;
 }
@@ -1494,7 +1498,7 @@ html.dark .primary-action {
 
 .interest-list li + li::before {
   margin: 0 0.65rem;
-  color: var(--accent);
+  color: var(--accent-readable);
   content: "/";
 }
 
