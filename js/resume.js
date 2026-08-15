@@ -39,6 +39,21 @@
     );
   };
 
+  function updateRochesterTime() {
+    var now = new Date();
+    var formatter = new Intl.DateTimeFormat([], {
+      timeZone: "America/New_York",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short"
+    });
+
+    document.querySelectorAll("[data-local-time]").forEach(function (element) {
+      element.dateTime = now.toISOString();
+      element.textContent = formatter.format(now);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     var mobileMenu = document.getElementById("mobile-menu");
     var mobileMenuButton = document.getElementById("mobile-menu-button");
@@ -88,5 +103,8 @@
         applyTheme(!document.documentElement.classList.contains("dark"));
       });
     });
+
+    updateRochesterTime();
+    window.setInterval(updateRochesterTime, 30000);
   });
 })();

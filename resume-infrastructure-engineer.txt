@@ -4,7 +4,7 @@ Rochester, NY | Jessecopas@gmail.com | https://jessecopas.com
 PROFILE
 Infrastructure professional focused on reliable Windows, identity, endpoint, network, cloud, and automation systems in MSP and enterprise environments.
 
-OPERATING SCOPE
+TECHNICAL FOCUS
 Core Infrastructure: Windows Server, Active Directory, Group Policy, Endpoint imaging, Workstation deployment, Server and storage hardware
 Microsoft Cloud & Endpoint: Microsoft 365, Entra ID, Identity administration, Endpoint deployment, Windows deployment
 Networking & Security: SonicWall, Wireless access points, Network drops, Server network integration, Hardware diagnostics
@@ -47,7 +47,7 @@ SELECTED OUTCOMES
 - Worked within a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.
 
 CASE STUDIES
-Endpoint Imaging & Deployment Automation
+NewComputerSetup
 Problem: New-computer setup required more than an hour of repetitive manual configuration per machine.
 Environment: Windows workstations, MSP client standards, non-PXE deployment environments
 Actions: Built customizable automation to apply software, configuration, and deployment steps consistently.

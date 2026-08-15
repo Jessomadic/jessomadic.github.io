@@ -41,7 +41,7 @@ Help Desk - IT Analyst | University of Rochester Medical Center | March 2022 - O
 Environment: Active Directory, Citrix Workspace, ServiceNow, Epic, Windows endpoints, Account permissions, Enterprise healthcare IT
 
 INFRASTRUCTURE CASE STUDIES
-Endpoint Imaging & Deployment Automation
+NewComputerSetup
 Problem: New-computer setup required more than an hour of repetitive manual configuration per machine.
 Environment: Windows workstations, MSP client standards, non-PXE deployment environments
 Actions: Built customizable automation to apply software, configuration, and deployment steps consistently.

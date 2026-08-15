@@ -55,7 +55,7 @@ Electrical Associate | The Home Depot | Nov 2018 - April 2020
 - Managed department operations independently and advised customers and contractors on electrical products, smart-home devices, setup, and troubleshooting.
 
 SELECTED INFRASTRUCTURE PROJECTS
-Endpoint Imaging & Deployment Automation
+NewComputerSetup
 Problem: New-computer setup required more than an hour of repetitive manual configuration per machine.
 Environment: Windows workstations, MSP client standards, non-PXE deployment environments
 Actions: Built customizable automation to apply software, configuration, and deployment steps consistently.

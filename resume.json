@@ -227,8 +227,8 @@
   ],
   "projects": [
     {
-      "name": "Endpoint Imaging & Deployment Automation",
-      "description": "Replaced a lengthy manual workstation setup process with repeatable deployment automation for an MSP environment without PXE tooling.",
+      "name": "NewComputerSetup",
+      "description": "I built a customizable Batch setup script at an MSP to turn a repetitive, hour-plus workstation setup into a consistent process, even when PXE was not available.",
       "highlights": [
         "New-computer setup required more than an hour of repetitive manual configuration per machine.",
         "Built customizable automation to apply software, configuration, and deployment steps consistently.",
@@ -244,7 +244,7 @@
     },
     {
       "name": "Active Directory Reporting Automation",
-      "description": "Turned large user-information requests in a healthcare environment into a repeatable Active Directory export workflow.",
+      "description": "I built this Active Directory export tool after seeing large user-information requests consume hours or days at the University of Rochester help desk. It turns that work into a repeatable export that runs in seconds.",
       "highlights": [
         "Requests covering hundreds or thousands of accounts could take hours or days to assemble manually.",
         "Created an export utility that collected the required account data in a consistent format.",
@@ -260,7 +260,7 @@
     },
     {
       "name": "Internal Ticketing & POS Operations System",
-      "description": "Built an internal platform that connected technical work tracking with the company's existing point-of-sale workflow.",
+      "description": "I built an internal Python and JavaScript platform to keep tickets, time, pricing, parts, and computer-build details in one MSSQL-backed workflow connected to the existing point-of-sale system.",
       "highlights": [
         "Tickets, time, pricing, parts, and computer-build details needed one maintainable operational record.",
         "Built a Python and JavaScript application with MSSQL-backed tracking and POS integration.",
@@ -276,7 +276,7 @@
     },
     {
       "name": "DungeonMasterVault",
-      "description": "Maintained Clojure-based PDF generation for character sheets on a widely used free SRD 5e character creator.",
+      "description": "I worked with the DungeonMasterVault team on the Clojure-based PDF generation behind exported D&D character sheets for its free SRD 5e character creator.",
       "highlights": [],
       "keywords": [
         "Clojure",
@@ -287,7 +287,7 @@
     },
     {
       "name": "Lyrics4Spotify",
-      "description": "Built a desktop lyrics display before Spotify added native lyrics support, using the Spotify API, MusixMatch, Rainmeter, and Lua.",
+      "description": "Years before Spotify added lyrics to its apps, I built Lyrics4Spotify to follow the song I was playing, fetch lyrics through MusixMatch, and display them on the desktop with Rainmeter and Lua.",
       "highlights": [],
       "keywords": [
         "Spotify API",
@@ -300,7 +300,7 @@
     },
     {
       "name": "Media Transcoding Plugin",
-      "description": "Wrote a JavaScript plugin for Tdarr that gives users explicit control over encoder, bitrate, resolution, container, and audio format choices.",
+      "description": "I wrote a JavaScript plugin for Tdarr that lets me choose the encoder, bitrate, resolution, container, and audio format instead of relying on a broad quality preset.",
       "highlights": [],
       "keywords": [
         "JavaScript",
