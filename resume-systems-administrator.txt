@@ -2,26 +2,26 @@ JESSE COPAS - SYSTEMS ADMINISTRATOR
 Rochester, NY | Jessecopas@gmail.com | https://jessecopas.com
 
 PROFILE
-Systems administrator with hands-on experience across MSP support, enterprise healthcare IT, endpoint deployment, Windows Server, Active Directory, server and storage hardware, networking, and automation. I build practical tools with PowerShell, Python, Batch, JavaScript, and SQL to remove repetitive work and make systems easier to support.
+Systems administrator focused on root-cause troubleshooting across Windows Server, Active Directory and Group Policy, DNS, DHCP, Hyper-V, Microsoft 365, Entra ID, Intune, RMM, and monitoring. I keep digging when an issue crosses systems or keeps coming back. Once I find the cause, I document the fix in runbooks or knowledge-base articles and train other technicians so the team can handle it next time. I also build and own internal tools, including the production ticketing system that fully replaced the legacy Perl/PHP workflow.
 
 RELEVANT CAPABILITIES
-Windows Infrastructure: Windows Server, Active Directory, Group Policy, Endpoint imaging, Workstation deployment, Server and storage hardware
-Identity & Productivity: Microsoft 365, Identity administration, Google Workspace, 3CX
-Networking & Support: SonicWall, Wireless access points, Network drops, Server network integration, Hardware diagnostics, Remote and on-site support
-Automation & Tooling: PowerShell, Batch, Python, JavaScript, Microsoft SQL Server, Git, GitHub Actions, Docker
+Windows Infrastructure: Windows Server administration, Active Directory, Group Policy, DNS and DHCP, Windows Server patching, File shares and permissions, Backups and restores
+Virtualization & Endpoint Operations: Hyper-V administration, Microsoft Intune, RMM administration, Infrastructure monitoring, Endpoint imaging and deployment, NAS administration, Server and storage hardware
+Identity, Networking & Support: Microsoft 365 administration, Microsoft Entra ID, SonicWall, Wireless access points and network drops, Escalation ownership, Technician training and knowledge transfer
+Automation & Documentation: PowerShell, Batch, Python, JavaScript, Microsoft SQL Server, Runbooks, SOPs, and knowledge-base articles, Diagnostic tooling
 
 RELEVANT EXPERIENCE
 Technical Engineer | Microworx | April 2024 - Present
-- Reduced endpoint deployment time by an average of 40% and improved stability by restoring programs and data onto a fresh Windows installation instead of carrying forward OS corruption.
-- Designed and built a custom ticketing and POS operations system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing point-of-sale workflow; the system fully replaced and retired the legacy Perl/PHP ticketing workflow without relying on a packaged platform.
-- Developed a VSS live-imaging and delta-merging workflow that restored programs and data onto a fresh Windows installation.
+- Built a VSS live-imaging and delta-merging workflow that cut endpoint deployment time by 40% on average while restoring programs and data onto a fresh Windows installation instead of carrying forward corruption from the previous OS.
+- Built and deployed a ground-up Python, JavaScript, and Microsoft SQL Server ticketing and POS operations system integrated with the existing point-of-sale workflow. It fully replaced and retired the legacy Perl/PHP ticketing workflow. That aging IIS application on Windows Server 2008 was impossible to update or repair; the replacement preserved full backward compatibility, so all existing data remained usable in the new system.
+- Own the ticketing system's full lifecycle, including authentication, backups, updates, bug fixes, feature development, deployment, and ongoing support.
+- At a Microworx customer, diagnosed an RMM check-in failure that was blocking patch management and managed antivirus by writing targeted diagnostic scripts and tracing the problem to a rogue RAID-monitoring process flooding TCP traffic.
 - Built a laptop battery-life benchmarking tool that automated video, audio, and office test cycles, tracked usage, generated reports, and shut systems down safely.
-- Work directly with business clients on troubleshooting, technical projects, and specifications for servers, desktops, and laptops.
-Environment: Windows endpoint deployment, VSS live imaging, Python, JavaScript, Microsoft SQL Server, Perl, PHP, Servers, Desktops, Laptops
+Environment: Windows endpoint deployment, VSS live imaging, RMM, Patch management, Managed antivirus, TCP/IP diagnostics, Python, JavaScript, Microsoft SQL Server, Legacy IIS, Windows Server 2008 retirement, Perl, PHP, Servers, Desktops, Laptops
 
 Hewlett-Packard Enterprise Field Technician | HEMMERSBACH US LLC | May 2023 - Nov 2023
 - Handled 2–5 field-service tickets per day across routes of up to 400 miles.
-- Worked independently across long field-service routes in varied customer environments.
+- Owned field-service diagnoses and repairs independently from initial troubleshooting through completion.
 - Diagnosed and repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware.
 - Replaced components, installed server hardware, and integrated new servers into client networks.
 Environment: HP enterprise servers, Storage, A3/A4 printers, Laptops, Desktops, Hardware diagnostics, Network integration
@@ -29,7 +29,7 @@ Environment: HP enterprise servers, Storage, A3/A4 printers, Laptops, Desktops, 
 Network Engineer | Simple Tech Innovations | Nov 2022 - May 2023
 - Reduced manual workstation setup time by 75% through Batch deployment automation.
 - Supported roughly 150 MSP clients as part of a three-person technical team.
-- Built Batch-based workstation deployment automation that made manual setup faster and configuration more consistent across clients.
+- Built a reusable Batch deployment workflow for non-PXE environments covering software installation, Windows configuration, browser defaults, computer naming, security-product cleanup, Windows 11 upgrades, and RMM handoff.
 - Moved between remote help desk work, on-site troubleshooting, equipment repair, and new hardware deployments for an MSP client base.
 - Deployed and repaired computers, printers, wireless access points, and network drops.
 Environment: Windows deployment, MSP support, Batch automation, Workstations, Printers, Wireless access points, Network drops
@@ -38,25 +38,31 @@ Help Desk - IT Analyst | University of Rochester Medical Center | March 2022 - O
 - Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.
 - Worked on a 15-person help desk team handling 500–1,000 calls per day.
 - Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.
-- Supported staff across University of Rochester hospitals and medical centers in a large enterprise healthcare environment.
-- Resolved Active Directory permission, Citrix Workspace, ServiceNow, Epic access, malware, password, and Windows endpoint issues.
-- Built a PowerShell Active Directory export tool that made large group-information requests repeatable and fast.
+- Traced and resolved identity, application, and endpoint problems across Active Directory, Citrix Workspace, ServiceNow, Epic, and Windows for staff throughout University of Rochester hospitals and medical centers.
+- Built a PowerShell and Windows Forms tool that recursively queried Active Directory group membership and exported user details to CSV.
 Environment: Active Directory, PowerShell, Citrix Workspace, ServiceNow, Epic, Windows endpoints, Account permissions, Enterprise healthcare IT
 
 INFRASTRUCTURE CASE STUDIES
 Custom Ticketing & POS Operations System
-Problem: The legacy Perl and PHP process did not give tickets, labor, pricing, parts, and computer-build details one maintainable operational record.
-Environment: Internal business operations, existing POS workflow, Microsoft SQL Server
-Actions: Designed and built a custom Python and JavaScript application from the ground up without adapting a commercial or open-source ticketing base.
-Result: Fully replaced and retired the legacy Perl/PHP ticketing workflow with one maintainable system built around the business's actual operations.
-Technologies: Python, JavaScript, Microsoft SQL Server, POS Integration
+Problem: The legacy Perl/PHP system still supported the repair workflow but had become impossible to update or repair and still ran as an IIS application on Windows Server 2008.
+Environment: Legacy Perl/PHP application on IIS and Windows Server 2008, existing POS workflow, Microsoft SQL Server
+Actions: Designed, built, and deployed the application without adapting a commercial or open-source ticketing base; preserved full backward compatibility; continue to administer authentication, backups, updates, bug fixes, and new features.
+Result: Fully replaced and retired the legacy Perl/PHP ticketing workflow and its Windows Server 2008/IIS dependency while keeping all existing data usable in the new system.
+Technologies: Python, JavaScript, Microsoft SQL Server, POS Integration, Legacy System Replacement
+
+RMM Communication Failure Investigation
+Problem: RMM check-ins were failing, which blocked patch management and managed antivirus functions.
+Environment: Microworx customer environment, Windows endpoints, RMM, patch management, managed antivirus, TCP/IP
+Actions: Wrote targeted diagnostic scripts and traced the failure to a rogue RAID-monitoring process flooding TCP traffic.
+Result: Identified the hidden software conflict behind a failure that initially presented as an RMM communication problem.
+Technologies: Diagnostic Scripting, RMM, Windows Endpoints, TCP/IP, Monitoring
 
 VSS Live-Imaging Workflow
 Problem: The existing imaging process slowed endpoint deployment and could carry operating-system corruption into the replacement system.
 Environment: Windows endpoint deployment, live systems, Volume Shadow Copy Service
 Actions: Developed an in-house VSS live-imaging and delta-merging workflow that restored programs and data onto a fresh Windows installation.
 Result: Improved deployment stability by avoiding corruption carried forward from the previous Windows installation.
-Evidence: Reduced endpoint deployment time by an average of 40% and improved stability by restoring programs and data onto a fresh Windows installation instead of carrying forward OS corruption.
+Evidence: Built a VSS live-imaging and delta-merging workflow that cut endpoint deployment time by 40% on average while restoring programs and data onto a fresh Windows installation instead of carrying forward corruption from the previous OS.
 Technologies: VSS, Windows Deployment, Endpoint Imaging
 
 NewComputerSetup
@@ -67,15 +73,6 @@ Result: Made workstation deployment faster and more consistent across MSP client
 Evidence: Reduced manual workstation setup time by 75% through Batch deployment automation.
 Technologies: Batch, Windows Deployment, Endpoint Administration
 Repository: https://github.com/Jessomadic/NewComputerSetup/tree/Main
-
-Active Directory Reporting Tool
-Problem: Large Active Directory group-information requests required repetitive manual lookup and formatting.
-Environment: Enterprise Active Directory, PowerShell, Windows Forms, healthcare help desk operations
-Actions: Built a simple interface that recursively queried Active Directory group membership and exported name, email, and SAM account name to CSV.
-Result: Made large Active Directory exports repeatable and fast.
-Evidence: Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.
-Technologies: PowerShell, Active Directory, Windows Forms, CSV
-Repository: https://github.com/Jessomadic/AD-Export-Tool
 
 CERTIFICATIONS
 - CompTIA A+ - CompTIA

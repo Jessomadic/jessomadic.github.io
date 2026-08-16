@@ -8,6 +8,6 @@ Plain-text resume: https://jessecopas.com/resume.txt
 Systems administrator edition: https://jessecopas.com/resume-systems-administrator.txt
 Infrastructure and automation edition: https://jessecopas.com/resume-infrastructure-engineer.txt
 
-Professional focus: Systems Administrator | Windows Infrastructure & Automation
+Professional focus: Systems Administrator | Windows Infrastructure, Troubleshooting & Automation
 Location: Rochester, NY
 Email: Jessecopas@gmail.com

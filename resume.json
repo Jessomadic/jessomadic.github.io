@@ -2,10 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/schema.json",
   "basics": {
     "name": "Jesse Copas",
-    "label": "Systems Administrator | Windows Infrastructure & Automation",
+    "label": "Systems Administrator | Windows Infrastructure, Troubleshooting & Automation",
     "email": "Jessecopas@gmail.com",
     "url": "https://jessecopas.com",
-    "summary": "Systems administrator with hands-on experience across MSP support, enterprise healthcare IT, endpoint deployment, Windows Server, Active Directory, server and storage hardware, networking, and automation. I build practical tools with PowerShell, Python, Batch, JavaScript, and SQL to remove repetitive work and make systems easier to support.",
+    "summary": "Systems administrator focused on root-cause troubleshooting across Windows Server, Active Directory and Group Policy, DNS, DHCP, Hyper-V, Microsoft 365, Entra ID, Intune, RMM, and monitoring. I keep digging when an issue crosses systems or keeps coming back. Once I find the cause, I document the fix in runbooks or knowledge-base articles and train other technicians so the team can handle it next time. I also build and own internal tools, including the production ticketing system that fully replaced the legacy Perl/PHP workflow.",
     "location": {
       "city": "Rochester",
       "region": "New York",
@@ -29,20 +29,25 @@
       "name": "Microworx",
       "position": "Technical Engineer",
       "dateRange": "April 2024 - Present",
-      "summary": "Designed and built a custom ticketing and POS operations system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing point-of-sale workflow; the system fully replaced and retired the legacy Perl/PHP ticketing workflow without relying on a packaged platform.",
+      "summary": "Built and deployed a ground-up Python, JavaScript, and Microsoft SQL Server ticketing and POS operations system integrated with the existing point-of-sale workflow. It fully replaced and retired the legacy Perl/PHP ticketing workflow. That aging IIS application on Windows Server 2008 was impossible to update or repair; the replacement preserved full backward compatibility, so all existing data remained usable in the new system.",
       "highlights": [
-        "Reduced endpoint deployment time by an average of 40% and improved stability by restoring programs and data onto a fresh Windows installation instead of carrying forward OS corruption.",
-        "Designed and built a custom ticketing and POS operations system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing point-of-sale workflow; the system fully replaced and retired the legacy Perl/PHP ticketing workflow without relying on a packaged platform.",
-        "Developed a VSS live-imaging and delta-merging workflow that restored programs and data onto a fresh Windows installation.",
-        "Built a laptop battery-life benchmarking tool that automated video, audio, and office test cycles, tracked usage, generated reports, and shut systems down safely.",
-        "Work directly with business clients on troubleshooting, technical projects, and specifications for servers, desktops, and laptops."
+        "Built a VSS live-imaging and delta-merging workflow that cut endpoint deployment time by 40% on average while restoring programs and data onto a fresh Windows installation instead of carrying forward corruption from the previous OS.",
+        "Own the ticketing system's full lifecycle, including authentication, backups, updates, bug fixes, feature development, deployment, and ongoing support.",
+        "At a Microworx customer, diagnosed an RMM check-in failure that was blocking patch management and managed antivirus by writing targeted diagnostic scripts and tracing the problem to a rogue RAID-monitoring process flooding TCP traffic.",
+        "Built a laptop battery-life benchmarking tool that automated video, audio, and office test cycles, tracked usage, generated reports, and shut systems down safely."
       ],
       "environment": [
         "Windows endpoint deployment",
         "VSS live imaging",
+        "RMM",
+        "Patch management",
+        "Managed antivirus",
+        "TCP/IP diagnostics",
         "Python",
         "JavaScript",
         "Microsoft SQL Server",
+        "Legacy IIS",
+        "Windows Server 2008 retirement",
         "Perl",
         "PHP",
         "Servers",
@@ -53,10 +58,10 @@
         {
           "key": "vss_deployment",
           "value": "40%",
-          "label": "less deployment time on average",
-          "statement": "Reduced endpoint deployment time by an average of 40% and improved stability by restoring programs and data onto a fresh Windows installation instead of carrying forward OS corruption.",
+          "label": "average reduction in deployment time",
+          "statement": "Built a VSS live-imaging and delta-merging workflow that cut endpoint deployment time by 40% on average while restoring programs and data onto a fresh Windows installation instead of carrying forward corruption from the previous OS.",
           "context": "Microworx",
-          "featured": false
+          "featured": true
         }
       ]
     },
@@ -64,10 +69,9 @@
       "name": "HEMMERSBACH US LLC",
       "position": "Hewlett-Packard Enterprise Field Technician",
       "dateRange": "May 2023 - Nov 2023",
-      "summary": "Worked independently across long field-service routes in varied customer environments.",
+      "summary": "Owned field-service diagnoses and repairs independently from initial troubleshooting through completion.",
       "highlights": [
         "Handled 2–5 field-service tickets per day across routes of up to 400 miles.",
-        "Worked independently across long field-service routes in varied customer environments.",
         "Diagnosed and repaired HP laptops, desktops, A3/A4 printers, servers, and storage hardware.",
         "Replaced components, installed server hardware, and integrated new servers into client networks."
       ],
@@ -95,11 +99,10 @@
       "name": "Simple Tech Innovations",
       "position": "Network Engineer",
       "dateRange": "Nov 2022 - May 2023",
-      "summary": "Built Batch-based workstation deployment automation that made manual setup faster and configuration more consistent across clients.",
+      "summary": "Built a reusable Batch deployment workflow for non-PXE environments covering software installation, Windows configuration, browser defaults, computer naming, security-product cleanup, Windows 11 upgrades, and RMM handoff.",
       "highlights": [
         "Reduced manual workstation setup time by 75% through Batch deployment automation.",
         "Supported roughly 150 MSP clients as part of a three-person technical team.",
-        "Built Batch-based workstation deployment automation that made manual setup faster and configuration more consistent across clients.",
         "Moved between remote help desk work, on-site troubleshooting, equipment repair, and new hardware deployments for an MSP client base.",
         "Deployed and repaired computers, printers, wireless access points, and network drops."
       ],
@@ -127,7 +130,7 @@
           "label": "MSP clients",
           "statement": "Supported roughly 150 MSP clients as part of a three-person technical team.",
           "context": "Simple Tech Innovations",
-          "featured": true
+          "featured": false
         }
       ]
     },
@@ -135,14 +138,12 @@
       "name": "University of Rochester Medical Center",
       "position": "Help Desk - IT Analyst",
       "dateRange": "March 2022 - Oct 2022",
-      "summary": "Supported staff across University of Rochester hospitals and medical centers in a large enterprise healthcare environment.",
+      "summary": "Traced and resolved identity, application, and endpoint problems across Active Directory, Citrix Workspace, ServiceNow, Epic, and Windows for staff throughout University of Rochester hospitals and medical centers.",
       "highlights": [
         "Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.",
         "Worked on a 15-person help desk team handling 500–1,000 calls per day.",
         "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
-        "Supported staff across University of Rochester hospitals and medical centers in a large enterprise healthcare environment.",
-        "Resolved Active Directory permission, Citrix Workspace, ServiceNow, Epic access, malware, password, and Windows endpoint issues.",
-        "Built a PowerShell Active Directory export tool that made large group-information requests repeatable and fast."
+        "Built a PowerShell and Windows Forms tool that recursively queried Active Directory group membership and exported user details to CSV."
       ],
       "environment": [
         "Active Directory",
@@ -161,7 +162,7 @@
           "label": "employees / devices / applications",
           "statement": "Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.",
           "context": "University of Rochester Medical Center",
-          "featured": true
+          "featured": false
         },
         {
           "key": "help_desk_volume",
@@ -173,11 +174,11 @@
         },
         {
           "key": "ad_reporting",
-          "value": "Hours or days → seconds",
+          "value": "Hours/days to seconds",
           "label": "large Active Directory exports",
           "statement": "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
           "context": "University of Rochester Medical Center",
-          "featured": false
+          "featured": true
         }
       ]
     },
@@ -186,9 +187,7 @@
       "position": "Game Repair and IT Support",
       "dateRange": "March 2021 - March 2022",
       "summary": "Repaired game hardware and supported staff with workstation, printer, password, and software issues.",
-      "highlights": [
-        "Repaired game hardware and supported staff with workstation, printer, password, and software issues."
-      ],
+      "highlights": [],
       "environment": [
         "Game hardware",
         "Windows workstations",
@@ -201,9 +200,7 @@
       "position": "Electrical Associate",
       "dateRange": "Nov 2018 - April 2020",
       "summary": "Ran the electrical department independently and helped customers and contractors select, set up, and troubleshoot electrical and smart-home products.",
-      "highlights": [
-        "Ran the electrical department independently and helped customers and contractors select, set up, and troubleshoot electrical and smart-home products."
-      ]
+      "highlights": []
     }
   ],
   "certificates": [
@@ -242,62 +239,83 @@
     {
       "name": "Windows Infrastructure",
       "keywords": [
-        "Windows Server",
+        "Windows Server administration",
         "Active Directory",
         "Group Policy",
-        "Endpoint imaging",
-        "Workstation deployment",
+        "DNS and DHCP",
+        "Windows Server patching",
+        "File shares and permissions",
+        "Backups and restores"
+      ]
+    },
+    {
+      "name": "Virtualization & Endpoint Operations",
+      "keywords": [
+        "Hyper-V administration",
+        "Microsoft Intune",
+        "RMM administration",
+        "Infrastructure monitoring",
+        "Endpoint imaging and deployment",
+        "NAS administration",
         "Server and storage hardware"
       ]
     },
     {
-      "name": "Identity & Productivity",
+      "name": "Identity, Networking & Support",
       "keywords": [
-        "Microsoft 365",
-        "Identity administration",
-        "Google Workspace",
-        "3CX"
-      ]
-    },
-    {
-      "name": "Networking & Support",
-      "keywords": [
+        "Microsoft 365 administration",
+        "Microsoft Entra ID",
         "SonicWall",
-        "Wireless access points",
-        "Network drops",
-        "Server network integration",
-        "Hardware diagnostics",
-        "Remote and on-site support"
+        "Wireless access points and network drops",
+        "Escalation ownership",
+        "Technician training and knowledge transfer"
       ]
     },
     {
-      "name": "Automation & Tooling",
+      "name": "Automation & Documentation",
       "keywords": [
         "PowerShell",
         "Batch",
         "Python",
         "JavaScript",
         "Microsoft SQL Server",
-        "Git",
-        "GitHub Actions",
-        "Docker"
+        "Runbooks, SOPs, and knowledge-base articles",
+        "Diagnostic tooling"
       ]
     }
   ],
   "projects": [
     {
       "name": "Custom Ticketing & POS Operations System",
-      "description": "The repair business needed one place for tickets, labor, pricing, parts, and custom-computer builds. I designed and built the system from the ground up in Python and JavaScript, backed by Microsoft SQL Server and connected to the existing POS workflow. It fully replaced and retired the legacy Perl/PHP ticketing workflow rather than sitting on top of a packaged ticketing product.",
+      "description": "The legacy Perl/PHP system still handled tickets, labor, pricing, parts, and custom-computer builds, but it had become impossible to update or repair and still ran as an IIS application on Windows Server 2008. I learned the workflow, then designed, built, and deployed its replacement from scratch in Python and JavaScript with Microsoft SQL Server and existing POS integration. It fully retired the old system while preserving full backward compatibility, so all existing data remained usable in the new system. I still own authentication, backups, updates, bug fixes, and feature development.",
       "highlights": [
-        "The legacy Perl and PHP process did not give tickets, labor, pricing, parts, and computer-build details one maintainable operational record.",
-        "Designed and built a custom Python and JavaScript application from the ground up without adapting a commercial or open-source ticketing base.",
-        "Fully replaced and retired the legacy Perl/PHP ticketing workflow with one maintainable system built around the business's actual operations."
+        "The legacy Perl/PHP system still supported the repair workflow but had become impossible to update or repair and still ran as an IIS application on Windows Server 2008.",
+        "Designed, built, and deployed the application without adapting a commercial or open-source ticketing base; preserved full backward compatibility; continue to administer authentication, backups, updates, bug fixes, and new features.",
+        "Fully replaced and retired the legacy Perl/PHP ticketing workflow and its Windows Server 2008/IIS dependency while keeping all existing data usable in the new system."
       ],
       "keywords": [
         "Python",
         "JavaScript",
         "Microsoft SQL Server",
-        "POS Integration"
+        "POS Integration",
+        "Legacy System Replacement"
+      ],
+      "type": "Internal Project"
+    },
+    {
+      "name": "RMM Communication Failure Investigation",
+      "description": "At a Microworx customer, RMM agents were failing to check in, blocking patch management and managed antivirus. I wrote targeted diagnostic scripts, traced the failure across the endpoint and network path, and isolated a rogue RAID-monitoring process that was flooding TCP traffic and preventing normal RMM communication.",
+      "highlights": [
+        "RMM check-ins were failing, which blocked patch management and managed antivirus functions.",
+        "Wrote targeted diagnostic scripts and traced the failure to a rogue RAID-monitoring process flooding TCP traffic.",
+        "Identified the hidden software conflict behind a failure that initially presented as an RMM communication problem."
+      ],
+      "keywords": [
+        "Diagnostic Scripting",
+        "RMM",
+        "Windows Endpoints",
+        "TCP/IP",
+        "Monitoring"
       ],
       "type": "Internal Project"
     },
@@ -308,7 +326,7 @@
         "The existing imaging process slowed endpoint deployment and could carry operating-system corruption into the replacement system.",
         "Developed an in-house VSS live-imaging and delta-merging workflow that restored programs and data onto a fresh Windows installation.",
         "Improved deployment stability by avoiding corruption carried forward from the previous Windows installation.",
-        "Reduced endpoint deployment time by an average of 40% and improved stability by restoring programs and data onto a fresh Windows installation instead of carrying forward OS corruption."
+        "Built a VSS live-imaging and delta-merging workflow that cut endpoint deployment time by 40% on average while restoring programs and data onto a fresh Windows installation instead of carrying forward corruption from the previous OS."
       ],
       "keywords": [
         "VSS",
@@ -320,10 +338,10 @@
         {
           "key": "vss_deployment",
           "value": "40%",
-          "label": "less deployment time on average",
-          "statement": "Reduced endpoint deployment time by an average of 40% and improved stability by restoring programs and data onto a fresh Windows installation instead of carrying forward OS corruption.",
+          "label": "average reduction in deployment time",
+          "statement": "Built a VSS live-imaging and delta-merging workflow that cut endpoint deployment time by 40% on average while restoring programs and data onto a fresh Windows installation instead of carrying forward corruption from the previous OS.",
           "context": "Microworx",
-          "featured": false
+          "featured": true
         }
       ]
     },
@@ -360,7 +378,7 @@
       "highlights": [
         "Large Active Directory group-information requests required repetitive manual lookup and formatting.",
         "Built a simple interface that recursively queried Active Directory group membership and exported name, email, and SAM account name to CSV.",
-        "Made large Active Directory exports repeatable and fast.",
+        "Produced consistent CSV exports for large, nested group requests.",
         "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds."
       ],
       "keywords": [
@@ -374,11 +392,11 @@
       "metrics": [
         {
           "key": "ad_reporting",
-          "value": "Hours or days → seconds",
+          "value": "Hours/days to seconds",
           "label": "large Active Directory exports",
           "statement": "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
           "context": "University of Rochester Medical Center",
-          "featured": false
+          "featured": true
         }
       ]
     },
@@ -447,10 +465,10 @@
     {
       "key": "vss_deployment",
       "value": "40%",
-      "label": "less deployment time on average",
-      "statement": "Reduced endpoint deployment time by an average of 40% and improved stability by restoring programs and data onto a fresh Windows installation instead of carrying forward OS corruption.",
+      "label": "average reduction in deployment time",
+      "statement": "Built a VSS live-imaging and delta-merging workflow that cut endpoint deployment time by 40% on average while restoring programs and data onto a fresh Windows installation instead of carrying forward corruption from the previous OS.",
       "context": "Microworx",
-      "featured": false
+      "featured": true
     },
     {
       "key": "msp_clients",
@@ -458,7 +476,7 @@
       "label": "MSP clients",
       "statement": "Supported roughly 150 MSP clients as part of a three-person technical team.",
       "context": "Simple Tech Innovations",
-      "featured": true
+      "featured": false
     },
     {
       "key": "healthcare_scale",
@@ -466,7 +484,7 @@
       "label": "employees / devices / applications",
       "statement": "Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.",
       "context": "University of Rochester Medical Center",
-      "featured": true
+      "featured": false
     },
     {
       "key": "help_desk_volume",
@@ -486,11 +504,11 @@
     },
     {
       "key": "ad_reporting",
-      "value": "Hours or days → seconds",
+      "value": "Hours/days to seconds",
       "label": "large Active Directory exports",
       "statement": "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
       "context": "University of Rochester Medical Center",
-      "featured": false
+      "featured": true
     }
   ],
   "meta": {
