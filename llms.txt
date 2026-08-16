@@ -26,7 +26,6 @@ Automation & Documentation: PowerShell, Batch, Python, JavaScript, Microsoft SQL
 - Reduced manual workstation setup time by 75% through Batch deployment automation.
 - Supported roughly 150 MSP clients as part of a three-person technical team.
 - Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.
-- Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.
 
 ## Selected case studies
 
@@ -89,9 +88,8 @@ Environment: Windows deployment, MSP support, Batch automation, Workstations, Pr
 Help Desk - IT Analyst | University of Rochester Medical Center | March 2022 - Oct 2022
 - Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.
 - Worked on a 15-person help desk team handling 500–1,000 calls per day.
-- Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.
 - Traced and resolved identity, application, and endpoint problems across Active Directory, Citrix Workspace, ServiceNow, Epic, and Windows for staff throughout University of Rochester hospitals and medical centers.
-- Built a PowerShell and Windows Forms tool that recursively queried Active Directory group membership and exported user details to CSV.
+- Built a PowerShell utility that recursively expanded Active Directory group membership and exported user names, email addresses, and SAM account names to CSV.
 Environment: Active Directory, PowerShell, Citrix Workspace, ServiceNow, Epic, Windows endpoints, Account permissions, Enterprise healthcare IT
 
 Game Repair and IT Support | Dave and Buster's, Inc | March 2021 - March 2022
@@ -119,4 +117,4 @@ Email: Jessecopas@gmail.com
 LinkedIn: https://www.linkedin.com/in/jesse-copas-50339b174/
 GitHub: https://github.com/Jessomadic
 
-Last updated: August 15, 2026
+Last updated: August 16, 2026

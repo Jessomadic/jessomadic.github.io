@@ -142,8 +142,7 @@
       "highlights": [
         "Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.",
         "Worked on a 15-person help desk team handling 500–1,000 calls per day.",
-        "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
-        "Built a PowerShell and Windows Forms tool that recursively queried Active Directory group membership and exported user details to CSV."
+        "Built a PowerShell utility that recursively expanded Active Directory group membership and exported user names, email addresses, and SAM account names to CSV."
       ],
       "environment": [
         "Active Directory",
@@ -171,14 +170,6 @@
           "statement": "Worked on a 15-person help desk team handling 500–1,000 calls per day.",
           "context": "University of Rochester Medical Center",
           "featured": false
-        },
-        {
-          "key": "ad_reporting",
-          "value": "Hours/days to seconds",
-          "label": "large Active Directory exports",
-          "statement": "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
-          "context": "University of Rochester Medical Center",
-          "featured": true
         }
       ]
     },
@@ -374,34 +365,6 @@
       ]
     },
     {
-      "name": "Active Directory Reporting Tool",
-      "description": "Large requests for user information required repetitive manual lookup and formatting. I wrote a PowerShell tool with a small Windows Forms input, recursive Active Directory group lookup, and CSV export for name, email, and SAM account name.",
-      "highlights": [
-        "Large Active Directory group-information requests required repetitive manual lookup and formatting.",
-        "Built a simple interface that recursively queried Active Directory group membership and exported name, email, and SAM account name to CSV.",
-        "Produced consistent CSV exports for large, nested group requests.",
-        "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds."
-      ],
-      "keywords": [
-        "PowerShell",
-        "Active Directory",
-        "Windows Forms",
-        "CSV"
-      ],
-      "url": "https://github.com/Jessomadic/AD-Export-Tool",
-      "type": "Infrastructure Case Study",
-      "metrics": [
-        {
-          "key": "ad_reporting",
-          "value": "Hours/days to seconds",
-          "label": "large Active Directory exports",
-          "statement": "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
-          "context": "University of Rochester Medical Center",
-          "featured": true
-        }
-      ]
-    },
-    {
       "name": "Laptop Battery-Life Benchmarking",
       "description": "Laptop battery testing meant repeating the same video, audio, and office workloads while keeping clean records. I built a tool to run the cycles, track usage, generate reports, and shut the system down safely when testing finished.",
       "highlights": [
@@ -518,19 +481,11 @@
       "statement": "Handled 2–5 field-service tickets per day across routes of up to 400 miles.",
       "context": "HEMMERSBACH US LLC",
       "featured": false
-    },
-    {
-      "key": "ad_reporting",
-      "value": "Hours/days to seconds",
-      "label": "large Active Directory exports",
-      "statement": "Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.",
-      "context": "University of Rochester Medical Center",
-      "featured": true
     }
   ],
   "meta": {
     "canonical": "https://jessecopas.com/resume/",
     "pdf": "https://jessecopas.com/resume/Jesse-Copas-Systems-Administrator-Resume.pdf",
-    "lastModified": "August 15, 2026"
+    "lastModified": "August 16, 2026"
   }
 }

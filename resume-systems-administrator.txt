@@ -37,9 +37,8 @@ Environment: Windows deployment, MSP support, Batch automation, Workstations, Pr
 Help Desk - IT Analyst | University of Rochester Medical Center | March 2022 - Oct 2022
 - Supported staff in a healthcare environment serving 45,000 employees, 20,000 devices, and 400+ applications.
 - Worked on a 15-person help desk team handling 500–1,000 calls per day.
-- Reduced requests covering hundreds or thousands of Active Directory users from hours or days of manual work to a CSV generated in seconds.
 - Traced and resolved identity, application, and endpoint problems across Active Directory, Citrix Workspace, ServiceNow, Epic, and Windows for staff throughout University of Rochester hospitals and medical centers.
-- Built a PowerShell and Windows Forms tool that recursively queried Active Directory group membership and exported user details to CSV.
+- Built a PowerShell utility that recursively expanded Active Directory group membership and exported user names, email addresses, and SAM account names to CSV.
 Environment: Active Directory, PowerShell, Citrix Workspace, ServiceNow, Epic, Windows endpoints, Account permissions, Enterprise healthcare IT
 
 INFRASTRUCTURE CASE STUDIES
