@@ -280,7 +280,8 @@
         "JavaScript",
         "Microsoft SQL Server",
         "Runbooks, SOPs, and knowledge-base articles",
-        "Diagnostic tooling"
+        "Diagnostic tooling",
+        "AI tools and local LLM integration"
       ]
     }
   ],
@@ -414,6 +415,22 @@
         "Windows Endpoints"
       ],
       "type": "Internal Project"
+    },
+    {
+      "name": "PickFlick AI Mode & Local Bridge",
+      "description": "I added AI-assisted group recommendations to PickFlick and built a local Windows bridge that connects the web app to LM Studio and Radarr. The local model weighs everyone's preferences against the available Plex library, while model and Radarr configuration stay on the Windows host.",
+      "highlights": [],
+      "keywords": [
+        "JavaScript",
+        "Node.js",
+        "LM Studio",
+        "Local LLM Integration",
+        "Plex",
+        "Radarr",
+        "Firebase"
+      ],
+      "url": "https://github.com/Jessomadic/jessomadic.github.io/tree/main/plex",
+      "type": "Software Project"
     },
     {
       "name": "DungeonMasterVault",

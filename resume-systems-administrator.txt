@@ -8,7 +8,7 @@ RELEVANT CAPABILITIES
 Windows Infrastructure: Windows Server administration, Active Directory, Group Policy, DNS and DHCP, Windows Server patching, File shares and permissions, Backups and restores
 Virtualization & Endpoint Operations: Hyper-V administration, Microsoft Intune, RMM administration, Infrastructure monitoring, Endpoint imaging and deployment, NAS administration, Server and storage hardware
 Identity, Networking & Support: Microsoft 365 administration, Microsoft Entra ID, SonicWall, Wireless access points and network drops, Escalation ownership, Technician training and knowledge transfer
-Automation & Documentation: PowerShell, Batch, Python, JavaScript, Microsoft SQL Server, Runbooks, SOPs, and knowledge-base articles, Diagnostic tooling
+Automation & Documentation: PowerShell, Batch, Python, JavaScript, Microsoft SQL Server, Runbooks, SOPs, and knowledge-base articles, Diagnostic tooling, AI tools and local LLM integration
 
 RELEVANT EXPERIENCE
 Technical Engineer | Microworx | April 2024 - Present
